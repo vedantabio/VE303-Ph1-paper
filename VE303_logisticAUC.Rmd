@@ -13,7 +13,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 source('R_scripts/libraries.R')
 library(minpack.lm)
-library(dunn.test)
 library(FSA)
 
 ```
@@ -94,9 +93,12 @@ rm(baseline_vanco)
 
 ```{r calculating acute vs durable engraftment}
 
-# The total VE303 RA peaked between 1 and 2 weeks after starting VE303, reaching a median total RA of XX% and XX% at day 14 for Cohorts 4 and 5, respectively, but steadily declined over the 1-year follow-up period to a total RA of XX% and XX% at 1-year
+# The total VE303 RA peaked between 1 and 2 weeks after starting VE303, reaching a median total RA of XX% and XX% at day 14 for Cohorts 4 and 5, respectively, but steadily declined over the 1-year follow-up period to a total RA of XX% and XX% at 1-year. 
 
-median_RA_cohorts45 = subset(VE303_abs_abund, Subject.Cohort==4 | Subject.Cohort==5) %>%
+# Day 8 median prevalence to compare to Cohorts 1 and 3
+
+median_RA_cohorts45 = VE303_abs_abund %>%
+  #subset(VE303_abs_abund, Subject.Cohort==4 | Subject.Cohort==5) %>%
   mutate(detection_status_adj_RA = case_when(
     detection_status == "Detected" ~ targeted_panel_relative_abundance,
     detection_status != "Detected" ~ 0
@@ -105,8 +107,9 @@ median_RA_cohorts45 = subset(VE303_abs_abund, Subject.Cohort==4 | Subject.Cohort
            Day.from.vanco, Timepoint.Calc,  Timepoint.Calc.Vanco, Day.from.Start, Collection.Date) %>%
   summarize(total_RA_percent = sum(detection_status_adj_RA)*100,
             n_strains = n_distinct(organism))  %>%
-subset(Timepoint.Calc=="Day 14" | Timepoint.Calc =="Week 52") %>%
-  group_by(Timepoint.Calc, Subject.Cohort) %>%
+subset(Timepoint.Calc=="Day 14" | Timepoint.Calc =="Week 52" | Day.in.Treatment.original=="Day 08") %>%
+  group_by(Day.in.Treatment.original, Subject.Cohort) %>%
+  # group_by(Timepoint.Calc, Subject.Cohort) %>%
   summarize(median_RA = median(total_RA_percent),
             n_subjects = n_distinct(Subject.ID))
 
@@ -134,6 +137,24 @@ med_strain_detection = VE303 %>%
   summarize(n_detected = mean(n_detection))
 
 kruskal.test(n_detected ~ Subject.Cohort, data = med_strain_detection)
+
+# Median strains detected on Study day 8
+med_strain_detection_study_day8 = VE303 %>%
+  mutate(Subject.Cohort = if_else(Subject.Cohort=="Sentinel", "1", Subject.Cohort)) %>%
+  subset(Timepoint.Calc=="Day 8") %>%
+  # Some have duplicates, to be consistent with bubble plots, pick earliest collection date
+  group_by(Subject.ID, Subject.Cohort, organism, detection_status, Timepoint.Calc, Collection.Date, Day.in.Treatment.original) %>%
+  summarize(Collection.Date=min(Collection.Date)) %>%
+  group_by(Subject.ID, Subject.Cohort) %>%
+  summarize(n_detection = sum(detection_status=="Detected"),
+            n_lowconf = sum(detection_status=="Insufficient data"),
+            n_not_detected = sum(detection_status=="Not detected"),
+            check = n_detection + n_lowconf + n_not_detected,
+            percent_detected = n_detection/8) %>%
+  group_by(Subject.Cohort) %>%
+  summarize(median_detected = median(percent_detected))
+
+rm(med_strain_detection_study_day8, med_strain_detection)
 
 ```
 
@@ -260,14 +281,14 @@ auc_l$dose_duration <- case_when(
   auc_l$Cohort == "Vanco" ~ "No VE303",
   auc_l$Cohort == "Cohort 1" | 
     auc_l$Cohort == "Cohort 2" | 
-      auc_l$Cohort =="Cohort 3" ~ "Single Day",
-  auc_l$Cohort == "Cohort 4" ~ "5 Days",
-  auc_l$Cohort == "Cohort 5" ~ "14 Days",
-  auc_l$Cohort == "Cohort 6" ~ "21 Days"
+      auc_l$Cohort =="Cohort 3" ~ "Single Day\nCohorts 1,2,3",
+  auc_l$Cohort == "Cohort 4" ~ "5 Days\nCohort 4",
+  auc_l$Cohort == "Cohort 5" ~ "14 Days\nCohort 5",
+  auc_l$Cohort == "Cohort 6" ~ "21 Days\nCohort 6"
 )
 
 auc_l$dose_duration <- factor(auc_l$dose_duration, 
-                            levels=c("No VE303", "Single Day", "5 Days", "14 Days", "21 Days"))
+                            levels=c("No VE303", "Single Day\nCohorts 1,2,3", "5 Days\nCohort 4", "14 Days\nCohort 5", "21 Days\nCohort 6"))
 
 ```
 
@@ -343,7 +364,7 @@ AUC_dosing =
     strip.background = element_rect(color="grey30"),
     panel.grid.major = element_line(color="grey93"))
 
-# ggsave(area_under_logistic, filename = "figures/area_under_logistic.jpeg", height = 3,  width= 11, units = "in")
+ggsave(area_under_logistic, filename = "figures/area_under_logistic.jpeg", height = 3,  width= 11, units = "in")
 
 ```
 
@@ -370,7 +391,7 @@ area_under_logistic =
     strip.background = element_rect(color="grey30"),
     panel.grid.major = element_line(color="grey93"))
 
-# ggsave(area_under_logistic, filename = "figures/area_under_logistic.jpeg", height = 3,  width= 11, units = "in")
+ggsave(area_under_logistic, filename = "figures/area_under_logistic.jpeg", height = 3,  width= 11, units = "in")
 
 ```
 
@@ -397,7 +418,7 @@ auc_l_total = auc_l %>%
   # scale_fill_manual(values = coh.cols)+
   # ylim(0,10) +
   geom_jitter(aes(y = total_AUC, x = dose_duration, color=factor_order), size = 2) +
-  labs(y = "Total Area under Logistic Curve",
+  labs(y = "Total Area under Logistic Curve\n",
        x = "Dosing Group",
        color = "Cohort") +
   theme(
