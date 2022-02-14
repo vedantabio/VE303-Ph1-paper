@@ -23,7 +23,7 @@ library(FSA)
 ## VE303 Metadata 
 VE303_metadata = "../../J Faith - SysBio Collaboration/Abundance Tables and Metadata/VE303-001/2019-07-24 Ph1_metadata_all.csv"
 
-VE303_OC_markerpanel = "../../UMass_Core_Vedanta_All_Programs/Unblind_clinical_data/VE303_Ph1/Updated_Marker_Panel/VE303_Ph2_Extended_Marker_Data_20210607.csv"
+VE303_OC_markerpanel = "../../UMass_Core_Vedanta_All_Programs/Unblind_clinical_data/VE303_Ph1/Updated_Marker_Panel/VE303_Ph2_Extended_Marker_Data_20210607.csv" 
 
 ```
 
@@ -93,12 +93,14 @@ rm(baseline_vanco)
 
 ```{r calculating acute vs durable engraftment}
 
-# The total VE303 RA peaked between 1 and 2 weeks after starting VE303, reaching a median total RA of XX% and XX% at day 14 for Cohorts 4 and 5, respectively, but steadily declined over the 1-year follow-up period to a total RA of XX% and XX% at 1-year. 
+# The total VE303 RA peaked between 1 and 2 weeks after starting VE303, reaching a median total RA of 2.6% and 7.0% at day 14 for Cohorts 4 and 5, respectively.
 
-# Day 8 median prevalence to compare to Cohorts 1 and 3
+# VE303 strain colonization steadily declined after stopping VE303 but the strains were still present over the 1-year follow-up period to a total RA of 0.5% and 0.1% at 1-year.
+
+# Strain detection and RA remained high through week 12 (11 and 10 weeks after stopping VE303 in Cohorts 4 and 5, respectively), with ... a total RA greater than 1%. 
 
 median_RA_cohorts45 = VE303_abs_abund %>%
-  #subset(VE303_abs_abund, Subject.Cohort==4 | Subject.Cohort==5) %>%
+  subset(Subject.Cohort==4 | Subject.Cohort==5) %>%
   mutate(detection_status_adj_RA = case_when(
     detection_status == "Detected" ~ targeted_panel_relative_abundance,
     detection_status != "Detected" ~ 0
@@ -107,7 +109,7 @@ median_RA_cohorts45 = VE303_abs_abund %>%
            Day.from.vanco, Timepoint.Calc,  Timepoint.Calc.Vanco, Day.from.Start, Collection.Date) %>%
   summarize(total_RA_percent = sum(detection_status_adj_RA)*100,
             n_strains = n_distinct(organism))  %>%
-subset(Timepoint.Calc=="Day 14" | Timepoint.Calc =="Week 52" | Day.in.Treatment.original=="Day 08") %>%
+subset(Timepoint.Calc=="Day 14" | Timepoint.Calc =="Week 52" | Day.in.Treatment.original=="Day 08" | Day.in.Treatment.original=="Week 12") %>%
   group_by(Day.in.Treatment.original, Subject.Cohort) %>%
   # group_by(Timepoint.Calc, Subject.Cohort) %>%
   summarize(median_RA = median(total_RA_percent),
@@ -118,6 +120,7 @@ rm(median_RA_cohorts45)
 
 ```
 
+"In subjects dosed with VE303 following vancomycin (Cohorts 1 to 5), the VE303 component strains were detected within the first 24 to 48 hours after VE303 administration (Figure 3). After a single dose of VE303 (Cohorts 1, 2, and 3), a median of 35.7% to 62.5% of the strains were detected 2 days after the dose of VE303 (study day 8) (Figure 3A)."
 
 ```{r computing median strain detection }
 # Goal: obtain a p-value for these statements
@@ -156,12 +159,33 @@ med_strain_detection_study_day8 = VE303 %>%
 
 rm(med_strain_detection_study_day8, med_strain_detection)
 
+
+```
+
+
+```{r Median Strain Detection, Cohorts 4 and 5}
+# Strain detection and RA remained high through week 12 (11 and 10 weeks after stopping VE303 in Cohorts 4 and 5, respectively), with a median number of strains detected of at least 5 
+
+# Two days after the start of VE303 administration (study day 8), the median percent of strains detected in Cohorts 4 and 5 were 75% and 25%, 
+
+med_strain_detection = VE303 %>%
+  subset(Subject.Cohort==4 | Subject.Cohort==5) %>%
+  subset(Timepoint.Calc=="Day 14" | Timepoint.Calc =="Week 52" | Day.in.Treatment.original=="Day 08" | Day.in.Treatment.original=="Week 12") %>%
+  group_by(Subject.ID, Subject.Cohort, Day.in.Treatment.original, Timepoint.Calc, Collection.Date, sample_name) %>%
+  summarize(n_detection = sum(detection_status=="Detected"),
+            n_lowconf = sum(detection_status=="Insufficient data"),
+            n_not_detected = sum(detection_status=="Not detected"),
+            check = n_detection + n_lowconf + n_not_detected,
+            percent_detected = n_detection/8) %>%
+  group_by(Subject.Cohort, Day.in.Treatment.original) %>%
+  summarize(percent_detected = median(percent_detected),
+            n_detected = median(n_detection))
 ```
 
 
 ```{r Running Model on all Data}
 
-# Initial Conditions (Next step: create a table of IC's and iterate through list, compare range of outcomes)
+# Initial Conditions
 n0_init =1E-6
 r_init = 1.3
 k_init  = 0.05
@@ -202,7 +226,7 @@ no_fit_samples <- VE303_abs_abund %>%
  
 ```
 
-```{r Plotting - testing plotting script}
+```{r Plotting}
 
 
 times = data.frame(t = 1:60)
@@ -290,6 +314,9 @@ auc_l$dose_duration <- case_when(
 auc_l$dose_duration <- factor(auc_l$dose_duration, 
                             levels=c("No VE303", "Single Day\nCohorts 1,2,3", "5 Days\nCohort 4", "14 Days\nCohort 5", "21 Days\nCohort 6"))
 
+# write.csv(auc_l, "logistic_engraftment.csv", row.names = FALSE)
+
+
 ```
 
 ```{r - Comparisons of AUC between/within cohorts}
@@ -364,7 +391,8 @@ AUC_dosing =
     strip.background = element_rect(color="grey30"),
     panel.grid.major = element_line(color="grey93"))
 
-ggsave(area_under_logistic, filename = "figures/area_under_logistic.jpeg", height = 3,  width= 11, units = "in")
+ggsave(AUC_dosing, filename = "figures/area_under_logistic_highres.jpeg", 
+       height = 3,  width= 11, units = "in")
 
 ```
 
@@ -391,7 +419,7 @@ area_under_logistic =
     strip.background = element_rect(color="grey30"),
     panel.grid.major = element_line(color="grey93"))
 
-ggsave(area_under_logistic, filename = "figures/area_under_logistic.jpeg", height = 3,  width= 11, units = "in")
+ggsave(area_under_logistic, filename = "figures/area_under_logistic_highRes.jpeg", height = 3,  width= 11, units = "in")
 
 ```
 
@@ -435,7 +463,7 @@ auc_l_total = auc_l %>%
 both_plots = AUC_dosing + total_VE303 + plot_layout(widths = c(7, 2))
 
 # Save plots as Jpeg
-# ggsave(both_plots, filename = "figures/auc_by_dose.jpeg", height = 3,  width= 10, units = "in", dpi = 1000)
+ggsave(total_VE303, filename = "figures/totalAUC_highres.jpeg", height = 3,  width= 4, units = "in", dpi = 1400)
 
 ```
 
