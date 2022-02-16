@@ -1,0 +1,126 @@
+---
+title: "Spike_in_validation"
+author: "E. Crossette"
+date: "7/22/2021"
+output: html_document
+---
+
+# Load Environment
+Change this to source the r script with library list and pretty plot settings
+
+```{r Environment Setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+source("R_scripts/libraries.R")
+
+strain.cols.303<- c("VE303-01" = "#1b9e77", "VE303-02" = "#d95f02", "VE303-03" = "#7570b3", "VE303-04" = "#e7298a", "VE303-05" = "#66a61e", "VE303-06" = "#e6ab02", "VE303-07" = "#a6761d", "VE303-08" = "#666666")
+
+```
+
+### Sample Summary
+2. 3 Master Stool samples
+    + 0.1 % VE303 Spike
+    + 1% VE303 Spike 
+    + 10% VE303 Spike in
+    + 1 No Spike in
+3. 1 LBP Product
+    + VE303
+
+## Load Data
+
+```{r Observed to expected abundances of spike-ins}
+
+# Sample name Key
+OC_names = read.csv("Data/Spike_in_metadata.csv")
+
+# Load VE303 marker panel samples
+oc_303 = read.csv("Data/VE303_Ph2_Extended_Marker_Data_spike_in.csv")
+oc_303 = merge(OC_names, oc_303[-c(3:10)])
+
+```
+
+
+```{r Compute how different strain abundances are to expected}
+
+observed_expected = oc_303[-c(7:16, 19:20)] %>%
+  mutate(expected_rel_abund = 
+         case_when(
+             shorthand=="100% VE303" ~100/8/100,
+             shorthand=="10% VE303" ~ 10/8/100,
+             shorthand=="1% VE303" ~ 1/8/100,
+             shorthand=="0.1% VE303" ~ 0.1/8/100,
+             shorthand=="No VE303" ~ 0),
+         diff = expected_rel_abund-targeted_panel_relative_abundance,
+         percent_diff = (diff/expected_rel_abund)*100,
+         fold_diff = targeted_panel_relative_abundance/expected_rel_abund,
+         expected_observer = 1/fold_diff,
+         LFC = log10(1/fold_diff))
+
+```
+
+
+# Generate data for Manuscript text
+Here I take the median abundances at each spike-in percent and compute the perent lower than the expected value.
+```{r Compute mean or median below expected abundance}
+
+obs_expected_text = oc_303[-c(7:17, 19:20)] %>%
+  group_by(shorthand, Spike, alias) %>%
+  summarize(median_strain_abund = median(targeted_panel_relative_abundance),
+            mean_strain_abund = mean(targeted_panel_relative_abundance)) %>%
+  mutate(expected_rel_abund = 
+         case_when(
+             shorthand=="100% VE303" ~100/8/100,
+             shorthand=="10% VE303" ~ 10/8/100,
+             shorthand=="1% VE303" ~ 1/8/100,
+             shorthand=="0.1% VE303" ~ 0.1/8/100,
+             shorthand=="No VE303" ~ 0),
+         diff = expected_rel_abund-median_strain_abund,
+         percent_diff = (diff/expected_rel_abund)*100,
+         fold_diff = median_strain_abund/expected_rel_abund,
+         expected_observer = 1/fold_diff,
+         LFC = log10(1/fold_diff))
+
+
+```
+
+
+```{r - PLot for VE303Ph1 relative abundances by spike-in Percent}
+
+observed_expected$factor_order = factor(observed_expected$shorthand, levels=c("100% VE303","10% VE303", "1% VE303", "0.1% VE303","No VE303"))
+
+# spike_in_boxplot = 
+  ggplot(observed_expected, aes(factor_order, targeted_panel_relative_abundance))+
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(aes(fill = organism, shape = detection_status), color="black", width = 0.25, size = 2) +
+  geom_hline(yintercept = c(0.125, 0.0125, 0.00125, 0.000125), linetype = "dashed") +
+  guides(fill = guide_legend(override.aes=list(shape=21))) +
+  # scale_color_manual(values = c("black", "red"))+
+    scale_shape_manual(values = c(21:23))+
+    annotate("text",
+           x = c(4.5, 4.5, 4.5, 1.5),
+           y = c(0.135, 0.0135, 0.00135, 0.000135),
+           label = c("Expected strain abundance,\n 100% VE303", 
+                     "Expected strain abundance,\n 10% VE303", 
+                     "Expected strain abundance,\n 1% VE303",
+                     "Expected strain abundance,\n 0.1% VE303"),
+           family = "", fontface = 3, size=4) + 
+  scale_fill_manual(values = strain.cols.303) +
+  labs(y = "Percent Relative Abundance",
+       x = "Percent of VE303 Spike-in",
+       # color = "Vendor",
+       fill = "VE303 Strain",
+       shape  = "Detection Status") +
+  scale_y_log10(labels = scales::percent, breaks = c(0.125, 0.0125, 0.00125, 0.000125)) +
+  theme(
+    panel.border = element_rect(color="grey30", fill=NA),
+    panel.background = element_rect(color="grey30", fill="white"),
+    strip.background = element_rect(color="grey30"),
+    panel.grid.major = element_line(color="grey93")
+
+  )
+
+ggsave(spike_in_boxplot, filename = "figures/spikein_vs_expected_boxplot.jpeg", height = 5,  width= 7, units = "in", dpi = 2000)
+
+```
+
+
