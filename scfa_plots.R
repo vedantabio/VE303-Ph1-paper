@@ -60,7 +60,6 @@ scfa_dt <-  scfa_dt[scfa_dt$Analyte %in% scfa_names,]
 
 # Replace BLOQ with NA
 unique(scfa_dt$Result)
- 
 scfa_dt$Abundance <-  as.numeric(as.character(scfa_dt$Result))
 scfa_dt$Abundance[grep("BLOQ",scfa_dt$Result)] <-  scfa_dt$LLOQ[grep("BLOQ",scfa_dt$Result)]
 names(scfa_dt)
@@ -80,14 +79,14 @@ coh.cols <- c("Vanco" = "#0487e3", "Cohort 1" = "#dc2d00", "Cohort 2" = "#5b0076
 
 pdf(paste0(results_folder,"/Total_Conc_SCFA.pdf"),width = 20,height = 4)
 
- plot_abun <- ggplot(sum_abun_dt, aes( y= log10(sum_abun), x= Time,
-                                 fill = Cohort.ID,color = Cohort.ID)) +
+plot_abun <- ggplot(sum_abun_dt, aes( y= log10(sum_abun), x= Time,
+                                      fill = Cohort.ID,color = Cohort.ID)) +
   geom_point(aes( group=Subject.ID),size = 2,alpha = 0.15)+
   geom_line(aes( group=Subject.ID),alpha = 0.15)+
   geom_point(data = med_abun_det, aes( y= log10(median_abun), x= Time,
-                                     color = Cohort.ID,group = Cohort.ID),size = 3,alpha = 0.7)+
+                                       color = Cohort.ID,group = Cohort.ID),size = 3,alpha = 0.7)+
   geom_line(data = med_abun_det, aes( y= log10(median_abun), x= Time,
-                                     color = Cohort.ID,group = Cohort.ID),size = 1,alpha = 0.7)+
+                                      color = Cohort.ID,group = Cohort.ID),size = 1,alpha = 0.7)+
   #geom_boxplot(alpha = 0.5,outlier.colour = NA)+
   scale_fill_manual(name = "Cohort",values = coh.cols)+
   scale_color_manual(name = "Cohort",values = coh.cols)+

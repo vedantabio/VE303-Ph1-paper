@@ -29,9 +29,9 @@ mainDir <- "../results"
 subDir <- paste0("VE303_recov/all_Cohorts")
 dir.create(file.path(mainDir, subDir), showWarnings = TRUE,recursive = TRUE)
 results_folder <- paste(mainDir,subDir,sep="/")
-  
+
 col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = "#1b9e77",
-                  "Late recovery" = "#d95f02","Early no vanco" = "#e7298a","Late no vanco" = "#66a61e")
+                   "Late recovery" = "#d95f02","Early no vanco" = "#e7298a","Late no vanco" = "#66a61e")
 
 # Now do the same thing but for all the cohorts
 # Read different tax level data
@@ -81,15 +81,11 @@ for(tax_lev in c("phylum","class","family","genus")){
   result_lme <- list()
   
   pdf(paste(results_folder,paste0("Rel_Abun_",tax_lev,"_early_recovery",'.pdf'),sep="/"),height = 4, width = 6, useDingbats = FALSE)
-  
   taxon <-  unique(fil_tax_dt$tax_name)[5]
   
   for(taxon in  unique(fil_tax_dt$tax_name)){
     
     early_bac_dt <-  fil_tax_dt[fil_tax_dt$tax_name ==  taxon,]    
-    
-    
-    
     box_dt <-  tax_dt[tax_dt$Treatment %in% c("Baseline","Early recovery","Early no vanco"),]
     box_dt <-  box_dt[box_dt$tax_name == taxon,]
     
@@ -118,10 +114,7 @@ for(tax_lev in c("phylum","class","family","genus")){
     # Use geom_line()+geom_pointrange()
     print(p_box_tax)
     
-    
-    
     # Loop it across different baseline
-    
     basline_lme <- list()
     baseline_cohorts <- c("Vanco","Cohort 1","Cohort 2","Cohort 3")
     baseline <- baseline_cohorts[1]
@@ -130,17 +123,9 @@ for(tax_lev in c("phylum","class","family","genus")){
       print(baseline)
       # Linear mixed effect model
       lme_dt <-  early_bac_dt
-      #names(lme_dt)[8] <-  "VE_303"
-      #names(lme_dt) <-  gsub("Abundance.","",names(lme_dt))
       lme_dt$t_Abundance  <- asin(sqrt(lme_dt$rel_abund ))
       lme_dt$cohort_id_long <- relevel(lme_dt$cohort_id_long,baseline)
-      
-      # Use geom_line()+geom_pointrange()
-      #print(p_box_tax)
-      
-      #lme_dt <-  lme_dt[lme_dt$cohort_id_long %in% c("Vanco","Cohort 4","Cohort 5"),]
-      #lme_dt <-  lme_dt[lme_dt$Treatment %in% c("Early recovery"),]
-      
+      lme_dt$Treatment <- factor(lme_dt$Treatment)
       lme_dt$Treatment <-  relevel(lme_dt$Treatment,ref = "Early recovery")
       library("nlme")
       fml <- as.formula( paste( "t_Abundance", "~", paste(c("Treatment*cohort_id_long "), collapse="+") ) )
@@ -152,23 +137,11 @@ for(tax_lev in c("phylum","class","family","genus")){
       sum_mod_dt$tax_lev <- tax_lev
       sum_mod_dt$taxon <-  taxon
       sum_mod_dt$baseline <-  baseline
-      # library(emmeans)
-      # em_sum <- emmeans(mod_bac,specs = pairwise ~ cohort_id_long,adjust="none")
-      # contrast_dt  <-  data.frame(em_sum$contrasts)
-      # rownames(contrast_dt) <- paste0("Contrast ",contrast_dt$contrast)
-      # contrast_dt$Phylum <-  phyla
-      # contrast_dt$padj <- p.adjust(contrast_dt$p.value,method = "BH")
       basline_lme[[baseline]] <- sum_mod_dt
     }  
     
     lme_base_dt <-   do.call("rbind",basline_lme)
-    #lme_base_dt$padj <- p.adjust(lme_base_dt$p.value,method = "BH")
-    
     result_lme[[taxon]] <-  lme_base_dt
-    
-    # result_lme_dt <-  result_lme_dt[result_lme_dt$Var != "(Intercept)",]
-    #result_lme_dt$padj <- p.adjust(result_lme_dt$p.value,method = "BH")
-    # 
   }  
   dev.off() 
   result_lme_dt <-  do.call("rbind",result_lme)
@@ -232,9 +205,6 @@ for(tax_lev in c("phylum","class","family","genus")){
 }
 
 
-
-
-
 # Use MHI to do the similar analysis
 mhi_dt <-  read.csv("../data/data_Mel/2021-04-26 VE303_Ph1_MHI_values.csv")
 
@@ -280,8 +250,6 @@ dev.off()
 library(dplyr)
 # Group by plot just for  Eary Recovery
 early_mhi_dt <-  mhi_dt[mhi_dt$Treatment %in% c("Baseline","Early recovery","Early no vanco"),]
-#early_mhi_dt <-  early_mhi_dt[early_mhi_dt$cohort_id_long !=  c("Cohort 6"),]
-
 
 mhi.summary <- early_mhi_dt %>%
   group_by(cohort_id_long,Treatment) %>%
@@ -296,8 +264,6 @@ pdf(paste(results_folder,paste0("MHI_box_early_recovery",'.pdf'),sep="/"),height
 # Use geom_pointrange
 set.seed(100)
 p_box_mhi <- ggplot(early_mhi_dt, aes(x=cohort_id_long, y=MHI ,fill = Treatment)) + 
-  #geom_boxplot()+
-  #geom_point(size = 2,aes(color = Treatment))+
   geom_point(position=position_jitterdodge(dodge.width=0.9),
              aes(fill = Treatment),color = "black", pch = 21, stroke = 0.5, alpha = 0.8) +
   geom_boxplot( outlier.colour=NA, position=position_dodge(width=0.9),alpha = 0.2)+
@@ -320,9 +286,6 @@ print(p_box_mhi)
 
 dev.off()
 
-# LME comparing MHI pre vanco, during and early recovery
-# lme_dt <- mhi_dt[mhi_dt$Treatment %in% c("Baseline","Early recovery"),]
-# lme_dt <- lme_dt[lme_dt$cohort_id_long != "Cohort 6",]
 
 lme_dt <-   early_mhi_dt[early_mhi_dt$cohort_id_long !=  c("Cohort 6"),]
 names(lme_dt)
