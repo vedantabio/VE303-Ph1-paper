@@ -51,9 +51,6 @@ names(m_panel_dt)
 unique(m_panel_dt$SampleID)
 
 dup_dt  <- stack(table(m_panel_dt$SampleID))
-# tmp <-  m_panel_dt[m_panel_dt$SampleID %in% dup_dt$ind[dup_dt$values>8],]
-# tmp <- tmp[tmp$organism == "VE303-01",]
-# Import metadata for panel
 meta<-  read.csv("../data/Microbiome/2019_07_24_Ph1_metadata_all.csv")
 #Filter out the Cohort 8 samples and week 24 - These are excluded from the publication
 # Filter out the samples collected during Vanco treatment - these were excluded from publication
@@ -117,10 +114,10 @@ names(panel_dt)
 
 # Subset 
 panel_dt <- unique(panel_dt[,c("SampleID","Subject.ID","Subject.Cohort","cohort_id_long" ,                                               
-                                 "desc.ID" ,"Day.in.Treatment.original","Collection.Day.Norm",
-                                 "Day.from.vanco","Timepoint.Calc","Timepoint.Calc.Vanco","Day.from.Start","Collection.Date",
-                                 "Collection.Time","Vanco.Start.Date","organism","detection_status",
-                                 "targeted_panel_relative_abundance","normalized_marker_depth","n_reads")])
+                               "desc.ID" ,"Day.in.Treatment.original","Collection.Day.Norm",
+                               "Day.from.vanco","Timepoint.Calc","Timepoint.Calc.Vanco","Day.from.Start","Collection.Date",
+                               "Collection.Time","Vanco.Start.Date","organism","detection_status",
+                               "targeted_panel_relative_abundance","normalized_marker_depth","n_reads")])
 
 panel_dt$N_det <-  ifelse(panel_dt$detection_status == "Detected", 1,0)
 # Lets compute total number of detected strains in each sample
@@ -156,15 +153,10 @@ pdf(paste0(results_folder,"/Total_Num_Strain_det_MP.pdf"),width = 20,height = 4)
 p <- ggplot(sum_num_dt, aes(x = Timepoint.Calc,y = N_sum_det,fill = cohort_id_long,color = cohort_id_long))+
   geom_point(size = 2,alpha = 0.3)+
   geom_boxplot(alpha = 0.5,outlier.colour = NA)+
-  #scale_color_manual(values = strain.cols)+
-  #geom_vline(xintercept = "0",color = "red",linetype = 2)+
   scale_fill_manual(name = "Cohort",values = coh.cols)+
   scale_color_manual(name = "Cohort",values = coh.cols)+
   facet_wrap(~cohort_id_long,scales = "free_x",nrow = 1)+
   scale_y_continuous(breaks = c(0:8),labels = c(0:8))+
-  #facet_wrap(~ PatientID,scales = "free_x",nrow = 1)+
-  #scale_x_continuous(breaks = c( seq(-90, 235, by=5)))+
-  #scale_y_log10(breaks = c(0.01,0.1,1,10,100),labels = c(0.01,0.1,1,10,100))+
   theme_bw()+
   ylab("Total VE303 Strains Detected (N)")+
   xlab("Time")+
@@ -175,11 +167,6 @@ p <- ggplot(sum_num_dt, aes(x = Timepoint.Calc,y = N_sum_det,fill = cohort_id_lo
 print(p)  
 
 
-#dev.off()
-
-
-#pdf(paste0(res_folder,"/Subject_line_Total_VE416_Log_RA.pdf"),width = 8,height = 4)
-#[ve416.colonize.sum$total_abun<= 6,]
 
 # Median of the detected strains
 med_det_strain <-  sum_num_dt %>%
@@ -189,19 +176,12 @@ med_det_strain <-  sum_num_dt %>%
 
 p <- ggplot(sum_num_dt, aes(x = Timepoint.Calc,y = N_sum_det,fill = cohort_id_long,group = cohort_id_long,color = cohort_id_long))+
   geom_point(size = 2,alpha = 0.3)+
-  #geom_boxplot(alpha = 0.5,outlier.colour = NA)+
   stat_summary(fun=median, geom="line",size = 1, alpha = 0.8)+
   geom_line(aes(group = Subject.ID), alpha = .2 )+
-  #scale_color_manual(values = strain.cols)+
   geom_vline(xintercept = "0",color = "red",linetype = 2)+
-  #geom_hline(yintercept = 5,color = "green",linetype = 2)+
-  #geom_hline(yintercept = 0.01,color = "purple",linetype = 2)+
-  #scale_fill_manual(name = "Treatment",values = coh.cols)+
   scale_color_manual(name = "Cohort",values = coh.cols) +
   scale_fill_manual(name = "Cohort",values = coh.cols) +
   facet_wrap(~cohort_id_long,scales = "free_x",nrow = 1)+
-  #facet_wrap(~ PatientID,scales = "free_x",nrow = 1)+
-  #scale_x_continuous(breaks = c( seq(-90, 235, by=5)))+
   scale_y_continuous(breaks = c(0:11),labels = c(0:11))+
   theme_bw()+
   ylab("Total VE303 Strains Detected (N)")+
@@ -226,9 +206,6 @@ p <- ggplot(sum_num_dt, aes(x = Timepoint.Calc,y = factor(Subject.ID),
   scale_fill_manual(name = "Cohort",values = coh.cols) +
   facet_wrap(~cohort_id_long,scales = "free",nrow = 1)+
   scale_size(range = c(0,8))+
-  #facet_wrap(~ PatientID,scales = "free_x",nrow = 1)+
-  #scale_x_continuous(breaks = c( seq(-90, 235, by=5)))+
- # scale_y_continuous(breaks = c(0:11),labels = c(0:11))+
   theme_bw()+
   ylab("Subjects")+
   xlab("Time")+
@@ -240,10 +217,6 @@ print(p)
 dev.off()
 
 
-# Have to plot individually for Each cohort
-
-
-#pdf(paste0(results_folder,"/VE303_Strain_Abun_Subject_level.pdf"),width = 20,height = 4)
 coh_list <- c("Vanco","Cohort 1", "Cohort 2", "Cohort 3", "Cohort 4", "Cohort 5" ,"Cohort 6") 
 coh <-  coh_list[1]
 plot_list <-  list()
@@ -262,9 +235,6 @@ for(coh in coh_list){
                range = c(0.01,10),
                limits = c(0.01,12),
                trans = "log10", name="Strain Abundance") +
-    # scale_size(breaks = c(.1,1,10,100),labels = c(.1,1,10,100),
-    #                limits = c(0.01,100),
-    #    trans = "log10", name="Strain Abundance") +
     theme_bw() + 
     labs(title= element_blank(), x="Day", y="Strains",shape=1) + 
     theme(axis.title = element_text(size=16), 
@@ -281,12 +251,6 @@ for(coh in coh_list){
   plot_list[[coh]] <- p
   #print(p)
 }
-
-print(plot_list[[1]])
-print(plot_list[[2]])
-
-p0 <-  plot_list[[1]]
-
 
 p0 <- plot_list[[1]]
 pdf(paste0(results_folder,"/VE303_Strain_Abun_Subject_level_Vanco.pdf"),width = 12,height = 4)
@@ -318,7 +282,6 @@ p6+theme(legend.position="none")
 dev.off()    
 
 library(qpdf)
-
 f_names <- (list.files(path = "../results/Marker_panel_plots",pattern = "VE303_Strain",full.names = T))
 f_names <-  c(f_names[1:6],f_names[7])
 
@@ -340,47 +303,16 @@ p4 <- plot_list[[5]]
 p5 <- plot_list[[6]]
 p6 <- plot_list[[7]]
 
-# library(patchwork)
-# p_1_2_3 <-  (p1/p2)/p3 +plot_layout(guides = 'collect')
-# 
-# p_0_6 <- p0/p6 +plot_layout(guides = 'collect')
-#  
-# pdf(paste0(results_folder,"/VE303_Strain_Abun_Subject_level.pdf"),width = 20,height = 20)
-# p_1_2_3/p_0_6 + plot_layout(guides = 'collect')
-# dev.off()    
-# 
-# 
-# p1 + inset_element(p2, left = 0.6, bottom = 0.6, right = 1, top = 1)+plot_layout(guides = 'collect')
-# 
-
-
-
-# pdf(paste0(results_folder,"/",paste0("VE303_Strain_Abun_Subject_level_",coh,".pdf")),width = 20,height = 4)
-# print(p)
-# dev.off()
-
-#dev.off()
-
-
 pdf(paste0(results_folder,"/Subject_line_Strain_VE303_Log_RA_MP_Mean.pdf"),width = 20,height = 12)
 
 p_ra <- ggplot(num_dt, aes(x = Timepoint.Calc,y = est_rel_abundance_adj+0.01,fill = cohort_id_long,group = cohort_id_long,color = cohort_id_long))+
   geom_point(size = 1,alpha = 0.5)+
-  #geom_boxplot(alpha = 0.5,outlier.colour = NA)+
   stat_summary(fun=mean, geom="line",size = 1.5, alpha = 0.5)+
   geom_line(aes(group = Subject.ID), alpha = .2 )+
-  #scale_color_manual(values = strain.cols)+
-  #geom_vline(xintercept = "0",color = "red",linetype = 2)+
-  #geom_hline(yintercept = 5,color = "green",linetype = 2)+
- # geom_hline(yintercept = 0.01,color = "purple",linetype = 2)+
   geom_hline(yintercept = .1,color = "red",linetype = 2, alpha = 0.5)+
-  #scale_fill_manual(name = "Treatment",values = coh.cols)+
   scale_color_manual(name = "Cohort",values = coh.cols) +
   scale_fill_manual(name = "Cohort",values = coh.cols) +
-  #facet_wrap(~otu+Treatment,scales = "free_x", nrow = 7, ncol = 2)+
   facet_grid(organism~cohort_id_long,scales = "free_x",space = "free_x")+
-  #facet_wrap(~ PatientID,scales = "free_x",nrow = 1)+
-  #scale_x_continuous(breaks = c( seq(-90, 235, by=5)))+
   scale_y_log10(breaks = c(0.01,0.1,1,10,100),labels = c(0.01,0.1,1,10,100))+
   theme_bw()+
   ylab("% of Total VE303 Abundance")+
@@ -394,22 +326,13 @@ print(p_ra)
 dev.off()
 
 
-
-
-
 pdf(paste0(results_folder,"/Total_VE303_Col_RA_MP.pdf"),width = 20,height = 4)
-
 p <- ggplot(sum_num_dt, aes(x = Timepoint.Calc,y = sum_abun,fill = cohort_id_long,color = cohort_id_long))+
   geom_point(size = 2,alpha = 0.3)+
   geom_boxplot(alpha = 0.5,outlier.colour = NA)+
-  #scale_color_manual(values = strain.cols)+
-#  geom_vline(xintercept = "0",color = "red",linetype = 2)+
   scale_fill_manual(name = "Treatment",values = coh.cols)+
   scale_color_manual(name = "Treatment",values = coh.cols)+
   facet_wrap(~cohort_id_long,scales = "free_x",nrow = 1)+
-  #facet_wrap(~ PatientID,scales = "free_x",nrow = 1)+
-  #scale_x_continuous(breaks = c( seq(-90, 235, by=5)))+
-  #scale_y_log10(breaks = c(0.01,0.1,1,10,100),labels = c(0.01,0.1,1,10,100))+
   theme_bw()+
   ylab("% of Total VE303 Abundance")+
   xlab("Time")+
@@ -423,15 +346,10 @@ print(p)
 p <- ggplot(sum_num_dt, aes(x = Timepoint.Calc,y = sum_abun+0.01,fill = cohort_id_long,color = cohort_id_long))+
   geom_point(size = 2,alpha = 0.3)+
   geom_boxplot(alpha = 0.5,outlier.colour = NA)+
-  #scale_color_manual(values = strain.cols)+
-  #geom_vline(xintercept = "0",color = "red",linetype = 2)+
   geom_hline(yintercept = .1,color = "red",linetype = 2)+
- # geom_hline(yintercept = 0.01,color = "purple",linetype = 2)+
   scale_fill_manual(name = "Treatment",values = coh.cols)+
   scale_color_manual(name = "Treatment",values = coh.cols)+
   facet_wrap(~cohort_id_long,scales = "free_x",nrow = 1)+
-  #facet_wrap(~ PatientID,scales = "free_x",nrow = 1)+
-  #scale_x_continuous(breaks = c( seq(-90, 235, by=5)))+
   scale_y_log10(breaks = c(0.01,0.1,1,5,10,100),labels = c(0.01,0.1,1,5,10,100))+
   theme_bw()+
   ylab("% of Total VE303 Abundance")+
@@ -447,14 +365,12 @@ dev.off()
 
 
 # Plot VE303 absolute abundances:
-
 # Merge two tables 
 mp_dt <-  m_panel_dt %>% inner_join(meta_unique, by =  c("SampleID" = "sample_name"))
 mp_dt$N_det <-  ifelse(mp_dt$detection_status == "Detected", 1,0)
 
 # Compute absolute bacterial abundance
 #Calculate the Absolute Abundance at each taxonomic depth
-
 ### note: 
 # f = relative abundance
 # M = mass of stool 
@@ -475,23 +391,23 @@ mp_dt$absolute_abund_adj[mp_dt$N_det == 0] <- 0
 #tmp <- mp_dt[mp_dt$organism == "VE303-01",]
 
 mp_dt <-  mp_dt[,c("SampleID","Subject.ID","Subject.Cohort","cohort_id_long" ,                                               
-               "desc.ID" ,"Day.in.Treatment.original","Collection.Day.Norm",
-               "Day.from.vanco","Timepoint.Calc","Timepoint.Calc.Vanco","Day.from.Start","Collection.Date",
-               "Collection.Time","Vanco.Start.Date","organism","detection_status",
-               "DNA.Yield...U.00B5.g.",
-               "Weight.of.collected.sample..mg.",
-               #"dna_norm",
-               "targeted_panel_relative_abundance","absolute_abund","absolute_abund_adj")]
+                   "desc.ID" ,"Day.in.Treatment.original","Collection.Day.Norm",
+                   "Day.from.vanco","Timepoint.Calc","Timepoint.Calc.Vanco","Day.from.Start","Collection.Date",
+                   "Collection.Time","Vanco.Start.Date","organism","detection_status",
+                   "DNA.Yield...U.00B5.g.",
+                   "Weight.of.collected.sample..mg.",
+                   #"dna_norm",
+                   "targeted_panel_relative_abundance","absolute_abund","absolute_abund_adj")]
 
 sum_ve303_dt <- mp_dt %>%
   group_by(Subject.ID,cohort_id_long,SampleID,Timepoint.Calc) %>% 
-    summarise(sum_abun = sum(absolute_abund_adj))
+  summarise(sum_abun = sum(absolute_abund_adj))
 
 sum_ve303_dt$Timepoint.Calc <- factor(sum_ve303_dt$Timepoint.Calc, levels = c("Baseline", "Day -1", "Day 0", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 10", "Day 13", "Day 14", "Day 15", "Week 3", "Week 4", "Week 6", "Week 8", "Week 12", "Week 24", "Week 52"))
 
 
 phy_p <- ggplot(sum_ve303_dt, aes( y= sum_abun +1e-8 , x= Timepoint.Calc,
-                             fill = cohort_id_long,color = cohort_id_long)) + 
+                                   fill = cohort_id_long,color = cohort_id_long)) + 
   geom_point(size = 2,alpha = 0.3)+
   geom_boxplot(alpha = 0.5,outlier.colour = NA)+
   scale_fill_manual(name = "Treatment",values = coh.cols)+
@@ -521,7 +437,7 @@ meta_abs$Timepoint.Calc <- factor(meta_abs$Timepoint.Calc, levels = c("Baseline"
 
 
 phy_p <- ggplot(meta_abs, aes( y= absolute_abund, x= Timepoint.Calc,
-                                   fill = cohort_id_long,color = cohort_id_long)) + 
+                               fill = cohort_id_long,color = cohort_id_long)) + 
   geom_point(size = 2,alpha = 0.3)+
   geom_boxplot(alpha = 0.5,outlier.colour = NA)+
   scale_fill_manual(name = "Treatment",values = coh.cols)+
@@ -542,20 +458,16 @@ dev.off()
 
 
 # Major Phylum abundance 
-
 # Read phylum level 
 phyla_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_phlyum_RA.csv")
 unique(phyla_dt$sample_name)
 phyla_dt <- phyla_dt %>%
   filter(absolute_abund > 0)
-
-
 phyla_dt <- phyla_dt[phyla_dt$sample_name %in% meta_unique$sample_name,]
+phyla_dt$cohort_id_long <-  factor(phyla_dt$cohort_id_long)
 phyla_dt$cohort_id_long <- relevel(phyla_dt$cohort_id_long,ref = "Vanco") 
 phyla_dt$Timepoint.Calc <- factor(phyla_dt$Timepoint.Calc, levels = c("Baseline", "Day -1", "Day 0", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 10", "Day 13", "Day 14", "Day 15", "Week 3", "Week 4", "Week 6", "Week 8", "Week 12", "Week 24", "Week 52"))
-
 sub_phy_dt <-  phyla_dt[phyla_dt$phylum_name %in% c("Proteobacteria","Bacteroidetes","Firmicutes"),]
-
 
 # Compute median at each time point for each cohort 
 # Median of the detected strains
@@ -572,28 +484,22 @@ phy.cols <- c("Actinobacteria" = "#e41a1c", "Bacteroidetes" = "#ffd73a", "Firmic
               "Fusobacteria" = "#ff7f00", "Proteobacteria" = "#377eb8", "Spirochaetes" = "#a65628",
               "Synergistetes" = "#f781bf", "Tenericutes" = "#999999", "Verrucomicrobia" = "#984ea3", "Euryarchaeota" = "black")
 
-
 unique(phyla_dt$phylum_name)
-
 
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 
-
-
 pdf(paste0(results_folder,"/Absolute_abundance_Phylum_level.pdf"),width = 20,height = 4)
 
-
 phy_p <- ggplot(sub_phy_dt, aes( y= absolute_abund, x= Timepoint.Calc,
-                               fill = phylum_name,color = phylum_name)) + 
+                                 fill = phylum_name,color = phylum_name)) + 
   geom_point(aes( group=interaction(Subject.ID, phylum_name)),size = 2,alpha = 0.15)+
   geom_line(aes( group=interaction(Subject.ID, phylum_name)),alpha = 0.15)+
   geom_point(data = sub_med_dt, aes( y= median_det, x= Timepoint.Calc,
-                              fill = phylum_name,color = phylum_name),size = 3,alpha = 0.7)+
+                                     fill = phylum_name,color = phylum_name),size = 3,alpha = 0.7)+
   geom_line(data = sub_med_dt, aes( y= median_det, x= Timepoint.Calc,
-                               color = phylum_name,group = phylum_name),alpha = 0.7)+
-  #geom_boxplot(alpha = 0.5,outlier.colour = NA)+
+                                    color = phylum_name,group = phylum_name),alpha = 0.7)+
   scale_fill_manual(name = "Phylum",values = phy.cols)+
   scale_color_manual(name = "Phylum",values = phy.cols)+
   facet_wrap(~cohort_id_long,scales = "free_x",nrow = 1)+
@@ -609,13 +515,13 @@ print(phy_p)
 #dev.off()
 
 phy_p <- ggplot(phyla_dt, aes( y= absolute_abund, x= Timepoint.Calc,
-                                 fill = phylum_name,color = phylum_name)) + 
+                               fill = phylum_name,color = phylum_name)) + 
   geom_point(aes( group=interaction(Subject.ID, phylum_name)),size = 2,alpha = 0.15)+
   geom_line(aes( group=interaction(Subject.ID, phylum_name)),alpha = 0.15)+
   geom_point(data = med_dt, aes( y= median_det, x= Timepoint.Calc,
-                                     fill = phylum_name,color = phylum_name),size = 3,alpha = 0.7)+
+                                 fill = phylum_name,color = phylum_name),size = 3,alpha = 0.7)+
   geom_line(data = med_dt, aes( y= median_det, x= Timepoint.Calc,
-                                    color = phylum_name,group = phylum_name),alpha = 0.7)+
+                                color = phylum_name,group = phylum_name),alpha = 0.7)+
   #geom_boxplot(alpha = 0.5,outlier.colour = NA)+
   scale_fill_manual(name = "Phylum",values = phy.cols)+
   scale_color_manual(name = "Phylum",values = phy.cols)+
@@ -637,7 +543,6 @@ dev.off()
 
 
 # Do similar to Class Clostridia
-
 # Read CLass level 
 class_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_class_RA.csv")
 unique(class_dt$sample_name)
@@ -649,8 +554,8 @@ class_dt <- class_dt %>%
 class_dt <- class_dt %>%
   filter(absolute_abund > 0)
 
-
 class_dt <- class_dt[class_dt$sample_name %in% meta_unique$sample_name,]
+class_dt$cohort_id_long <- factor(class_dt$cohort_id_long)
 class_dt$cohort_id_long <- relevel(class_dt$cohort_id_long,ref = "Vanco") 
 class_dt$Timepoint.Calc <- factor(class_dt$Timepoint.Calc, levels = c("Baseline", "Day -1", "Day 0", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 10", "Day 13", "Day 14", "Day 15", "Week 3", "Week 4", "Week 6", "Week 8", "Week 12", "Week 24", "Week 52"))
 
@@ -686,14 +591,13 @@ pdf(paste0(results_folder,"/Absolute_abundance_CLass_Clostridia.pdf"),width = 20
 
 
 phy_p <- ggplot(sub_class_dt, aes( y= absolute_abund, x= Timepoint.Calc,
-                                 fill = GTDB_class,color = GTDB_class)) + 
+                                   fill = GTDB_class,color = GTDB_class)) + 
   geom_point(aes( group=interaction(Subject.ID, GTDB_class)),size = 2,alpha = 0.15)+
   geom_line(aes( group=interaction(Subject.ID, GTDB_class)),alpha = 0.15)+
   geom_point(data = sub_med_dt, aes( y= median_det, x= Timepoint.Calc,
                                      fill = GTDB_class,color = GTDB_class),size = 3,alpha = 0.7)+
   geom_line(data = sub_med_dt, aes( y= median_det, x= Timepoint.Calc,
                                     color = GTDB_class,group = GTDB_class),alpha = 0.7)+
-  #geom_boxplot(alpha = 0.5,outlier.colour = NA)+
   scale_fill_manual(name = "Class",values = class.cols)+
   scale_color_manual(name = "Class",values = class.cols)+
   facet_wrap(~cohort_id_long,scales = "free_x",nrow = 1)+

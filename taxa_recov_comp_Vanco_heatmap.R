@@ -42,27 +42,9 @@ col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = 
 # Read different tax level data
 tax_list <- list()
 tax_lev <- c("phylum","class","family","genus")[3]
-
-tax_list <-  list()
 sig_coh_list <- list()
-
 for(tax_lev in c("phylum","class","family","genus")){
   
-  # if(tax_lev == "phylum"){
-  #   tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_phlyum_RA.csv")
-  #   result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/2021_05_13/phylum_lme_results_baseline_vanco.csv")
-  # }else if(tax_lev == "class"){
-  #   tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_class_RA.csv")
-  #   result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/2021_05_13/class_lme_results_baseline_vanco.csv")
-  # }else if(tax_lev == "family"){
-  #   tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_family_RA.csv")
-  #   result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/2021_05_13/family_lme_results_baseline_vanco.csv")
-  # }else if(tax_lev == "genus"){
-  #   tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_genus_RA.csv")
-  #   result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/2021_05_13/genus_lme_results_baseline_vanco.csv")
-  # }else{
-  #   
-  # }
   if(tax_lev == "phylum"){
     tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_phlyum_RA.csv")
     result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/phylum_lme_results_baseline_vanco.csv")
@@ -80,8 +62,6 @@ for(tax_lev in c("phylum","class","family","genus")){
   }
   
   
-  #tax_dt <- tax_dt[tax_dt$cohort_id_long %in% c("Vanco","Cohort 4","Cohort 5"),]
-  
   tax_dt$Treatment <- tax_dt$Day.from.Start  
   tax_dt$cohort_id_long <-  factor(tax_dt$cohort_id_long, levels = unique(tax_dt$cohort_id_long))
   tax_dt$cohort_id_long <- relevel(tax_dt$cohort_id_long,ref = "Vanco")
@@ -94,27 +74,19 @@ for(tax_lev in c("phylum","class","family","genus")){
   result_lme_dt <-  result_lme_dt[result_lme_dt$Var != "(Intercept)",]
   # Also remove TreatmentBaseline (Detects the different between Baseline and Early recovery in Vanco)
   result_lme_dt <-  result_lme_dt[result_lme_dt$Var != "TreatmentBaseline",]
-  
   # Remove interaction
   result_lme_dt <-  result_lme_dt[!grepl(":",result_lme_dt$Var),]
-  
   # Filter 
   result_lme_dt_sig <- result_lme_dt[result_lme_dt$padj < 0.05,]
-  
   
   sig_coh_dt <-  unique(result_lme_dt_sig[,c("taxon","Var","Value")])
   sig_coh_list[[tax_lev]] <- sig_coh_dt
   
   # Filter low prevalent taxa from the analysis 
   sum_tax_dt <- tax_dt[tax_dt$Treatment %in% c("Baseline","Early recovery","Early no vanco"),]
-  #sum_tax_dt <-  sum_tax_dt[sum_tax_dt$cohort_id_long != "Cohort 6",]
-  
   sig_tax_dt <-  sum_tax_dt[sum_tax_dt$tax_name %in% unique(result_lme_dt_sig$taxon),]  
-  
   # Only select necessary columns for heatmap:
   sig_tax_dt <- sig_tax_dt[, c("sample_name","tax_name","plot_order","rel_abund","cohort_id_long","Treatment")]
-  
-  #sig_tax_dt$level <-  tax_lev
   tax_list[[tax_lev]] <-  sig_tax_dt
   
 }  
@@ -133,12 +105,10 @@ library(tidyr)
 
 row_ann_dt_w <- row_ann_dt %>%
   pivot_wider(names_from = Cohort,values_from = Value) %>%
-   data.frame()
+  data.frame()
 names(row_ann_dt_w) <- gsub("\\."," ",names(row_ann_dt_w))
 
 row_ann_dt_w <-  row_ann_dt_w[,c("taxon","Cohort 1", "Cohort 2", "Cohort 3", "Cohort 4", "Cohort 5")]
-
-
 
 sig_tax_w <- final_sig_dt %>%
   pivot_wider(
@@ -160,7 +130,6 @@ rsplit[grep("c_",rownames(mat_ht))] <- "Class"
 
 rsplit <- factor(rsplit,levels = c("Genus","Family","Class","Phylum")) 
 
-
 mat2 <- mat_ht
 #rownames(mat2) <-  rownames(dt_mat)
 library(gtools)
@@ -174,9 +143,6 @@ library(yingtools2)
 library(data.table)
 library(hues)
 set.seed(1057)
-# Order matrix 
-#mat2 <- mat2[match(match_tax_dt$otu,rownames(mat2)),]
-# Order columns based on CFU
 dist_colors <- c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6",
                  "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3","#808000","#ffd8b1",
                  "#000080")
@@ -220,33 +186,6 @@ ha_left = HeatmapAnnotation(Cohort_1 = row_ann_dt_w$`Cohort 1`,
                                        Cohort_5 = col_b), which = "row")
 
 
-
-library(ComplexHeatmap)
-# ht  =  Heatmap(mat4,name = "sqrt(sqrt(Rel_Abun))",
-#                row_split = rsplit,
-#                gap = unit(2, "mm"),
-#                column_split = splitcols,
-#                top_annotation = ha_column,
-#                left_annotation = ha_left,
-#                #col = jet.colors(5),
-#                col = col_mat,
-#                row_names_side = "left",
-#                row_gap = unit(2, "mm"),
-#                row_title_gp = gpar(fontsize = 10,fontface = "bold"),
-#                row_title_rot = 0,
-#                column_title_gp = gpar(fontsize = 10,fontface = "bold"),
-#                column_title_rot = 0,
-#                cluster_rows = T,
-#                cluster_columns = F,
-#                border = T,
-#                show_row_dend = F,
-#                row_names_max_width = max_text_width(rownames(mat4),
-#                                                     gp = gpar(fontsize = 12)),
-#                column_names_max_height = max_text_width(colnames(mat4),
-#                                                         gp = gpar(fontsize = 12)))
-# pdf(paste0(results_folder,"/Heatmap_Sig_tax_Early_recov_All_Cohorts.pdf"),height = 6, width = 25)
-# draw(ht)
-# dev.off()
 
 library(ComplexHeatmap)
 ht  =  Heatmap(mat4,name = "Log10(Rel_Abun)",
@@ -324,9 +263,7 @@ dev.off()
 
 
 # Now only display species that are Significant in Cohort 4 and 5
-
 final_sig_dt <- do.call("rbind",tax_list) 
-
 row_ann_dt <-  do.call("rbind",sig_coh_list)
 names(row_ann_dt)[2] <- "Cohort"
 row_ann_dt$Cohort <-  gsub("cohort_id_long","",row_ann_dt$Cohort)
@@ -353,9 +290,9 @@ final_sig_dt <-  final_sig_dt[final_sig_dt$cohort_id_long %in% c("Vanco","Cohort
 final_sig_dt <-  final_sig_dt[gsub(".*__","",final_sig_dt$tax_name) %in% row_ann_dt_w$taxon,]
 
 sig_tax_w <- final_sig_dt %>%
-           pivot_wider(
-                names_from = tax_name,
-               values_from = c(rel_abund))
+  pivot_wider(
+    names_from = tax_name,
+    values_from = c(rel_abund))
 
 sig_tax_w <-  sig_tax_w %>% arrange(plot_order) %>% data.frame()
 
@@ -385,15 +322,10 @@ library(yingtools2)
 library(data.table)
 library(hues)
 set.seed(1057)
-# Order matrix 
-#mat2 <- mat2[match(match_tax_dt$otu,rownames(mat2)),]
-# Order columns based on CFU
 dist_colors <- c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6",
                  "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3","#808000","#ffd8b1",
                  "#000080")
 jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-
-
 
 library(scico)
 col_cfu <- scico(5, palette = 'lajolla')
@@ -411,8 +343,6 @@ splitcols <-ant_col$Cohort
 
 library(scico)
 col_mat <- scico(15, palette = 'lajolla')
-
-#mat4 <-sqrt(sqrt(mat2))
 mat4 <- log10(mat2 + 1e-5)
 rownames(mat4) <-  gsub(".*__","",rownames(mat4))
 
@@ -431,33 +361,6 @@ ha_left = HeatmapAnnotation(Cohort_1 = row_ann_dt_w$`Cohort 1`,
                                        Cohort_5 = col_b), which = "row")
 
 
-
-library(ComplexHeatmap)
-# ht  =  Heatmap(mat4,name = "sqrt(sqrt(Rel_Abun))",
-#                row_split = rsplit,
-#                gap = unit(2, "mm"),
-#                column_split = splitcols,
-#                top_annotation = ha_column,
-#                left_annotation = ha_left,
-#                #col = jet.colors(5),
-#                col = col_mat,
-#                row_names_side = "left",
-#                row_gap = unit(2, "mm"),
-#                row_title_gp = gpar(fontsize = 10,fontface = "bold"),
-#                row_title_rot = 0,
-#                column_title_gp = gpar(fontsize = 10,fontface = "bold"),
-#                column_title_rot = 0,
-#                cluster_rows = T,
-#                cluster_columns = F,
-#                border = T,
-#                show_row_dend = F,
-#                row_names_max_width = max_text_width(rownames(mat4),
-#                                                     gp = gpar(fontsize = 12)),
-#                column_names_max_height = max_text_width(colnames(mat4),
-#                                                         gp = gpar(fontsize = 12)))
-# pdf(paste0(results_folder,"/Heatmap_Sig_tax_Early_recov_All_Cohorts.pdf"),height = 6, width = 25)
-# draw(ht)
-# dev.off()
 
 library(ComplexHeatmap)
 ht  =  Heatmap(mat4,name = "Log10(Rel_Abun)",
@@ -501,8 +404,6 @@ ha_left = HeatmapAnnotation(Cohort_1 = row_ann_dt_w$`Cohort 1`,
                                        Cohort_5 = col_b), which = "row")
 
 
-
-
 ht  =  Heatmap(mat4,name = "Log10(Rel_Abun)",
                row_split = rsplit[r_order],
                gap = unit(2, "mm"),
@@ -531,7 +432,5 @@ ht  =  Heatmap(mat4,name = "Log10(Rel_Abun)",
 pdf(paste0(results_folder,"/Heatmap_Sig_tax_Early_recov_Cohorts_4_5.pdf"),height = 5, width = 15)
 draw(ht)
 dev.off()
-
-
 
 

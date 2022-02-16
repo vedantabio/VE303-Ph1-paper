@@ -1,4 +1,4 @@
-# Make the VIMP 
+# Make the Heatmaps from RF analysis for SCFA and BA
 library(tidyverse)
 library(randomForest)
 library(parallel)
@@ -76,46 +76,28 @@ results_folder <- paste(mainDir,subDir,sep="/")
 
 # Read the VIMP files
 # Get variable importance 
-# vimp_dt <- list.files(path = "../RF_data/data/2019_05_01/",pattern = ".csv",full.names = T) %>%
-#   map_dfr(read_csv)
-# 
-# ale_dt <-  list.files(path = "../RF_data/data/ALE/2019_05_03/",pattern = ".csv",full.names = T) %>%
-#   map_dfr(read_csv)
-# 
-# vimp_dt <- list.files(path = "../RF_data/data/2019_05_29/",pattern = ".csv",full.names = T) %>%
-#   map_dfr(read_csv)
-# 
-# ale_dt <-  list.files(path = "../RF_data/data/ALE/2019_05_30/",pattern = ".csv",full.names = T) %>%
-#   map_dfr(read_csv)
 
+# Import appropriate folders from RF model's data
 vimp_dt <- list.files(path = "../RF_data/data/2019_08_04/",pattern = ".csv",full.names = T) %>%
   map_dfr(read_csv)
 
+# Import appropriate folders from ALE analysis
 ale_dt <-  list.files(path = "../RF_data/data/ALE/2019_08_08/",pattern = ".csv",full.names = T) %>%
   map_dfr(read_csv)
 
 
 all_analytes <-  unique(vimp_dt$Analyte)
-
-
-phy_codex <- readRDS("../data/phy_mic.rds")
-
-
+phy_codex <- readRDS("../data/processed_data/phy_mic_abs.rds")
 phy_sel <- prune_taxa(unique(vimp_dt$Predictors), phy_codex)
 
 tax_dt <-  tax_table(phy_sel)
 tax_dt <- data.frame(tax_dt@.Data)
-
 tax_dt[] <- lapply(tax_dt, as.character)
-
 tax_dt$Species <- rownames(tax_dt)
 
-
 gtdb_tax <-  tax_dt[, grep("GTDB",names(tax_dt), value = T)]
-
 incomplete_gtdb <-  gtdb_tax[!complete.cases(gtdb_tax),]
 complete_gtdb <-  gtdb_tax[complete.cases(gtdb_tax),]
-
 ncbi_tax <-  tax_dt[tax_dt$Species %in% rownames(incomplete_gtdb),][,1:7]
 names(ncbi_tax) <-  names(gtdb_tax)
 
@@ -125,16 +107,10 @@ tot_gtdb_dt$Species <-  rownames(tot_gtdb_dt)
 match_tax_dt <-  tot_gtdb_dt
 match_tax_dt$GTDB_phylum <- gsub("p__","",match_tax_dt$GTDB_phylum)
 match_tax_dt$GTDB_phylum <- gsub("_.*","",match_tax_dt$GTDB_phylum)
-
-
 match_tax_dt$GTDB_order <-  gsub("o__","",match_tax_dt$GTDB_order)
-
 match_tax_dt[match_tax_dt$Species == "Odoribacter_sp._UNK.MGS_12","GTDB_phylum"] <-  "Bacteroidetes"
 match_tax_dt[match_tax_dt$Species == "Odoribacter_sp._UNK.MGS_12","GTDB_order"] <-  "Bacteroidales"
-
-
 match_tax_dt <- match_tax_dt[order(match_tax_dt$GTDB_phylum,match_tax_dt$GTDB_order),]
-
 # Phylum and Order colors
 unique(match_tax_dt$GTDB_phylum)
 
@@ -149,31 +125,23 @@ shades_num <- match_tax_dt %>%
 shades_num <- merge(shades_num, dt_col_phylum, by.y = "Phylum", by.x = "GTDB_phylum")
 shades_num$phylum_col <-  as.character(shades_num$phylum_col )
 tax_sel <-  unique(match_tax_dt[,c("GTDB_phylum","GTDB_order")])
-
 library(yingtools2)
-#shades_num$phy_col <- as.vector(phylum_col[order(names(phylum_col))])
 order_col <- mapply(function(x, y){ shades(color = x, ncolor = y, variation = 1)}, x= shades_num$phylum_col ,y = shades_num$unique_types,
                     SIMPLIFY = F)
-
 order_col <- as.vector(unlist(order_col))
 names(order_col) <- tax_sel$GTDB_order
 
-
-# Make the list of random forest linear to parallelize
 # Loop over analyte
 analyte <- all_analytes[1]
 slope_all_list <- list()
 for(analyte in all_analytes){
-  
   # VIMP 
   vimp_sel <-  vimp_dt %>% filter(Analyte == analyte & freq >= 0.2) %>% as.data.frame()
-   # Select top 10
+  # Select top 10
   vimp_sel <-  vimp_sel %>% top_n(10, freq) 
-  
-  
-  
   vimp_sel$Predictors <- factor(vimp_sel$Predictors,levels = rev(vimp_sel$Predictors))
   
+  # VIMP 
   # vimp_p <- ggplot() +
   #   geom_point(data=vimp_sel, aes(x = Predictors, y = av_vimp,fill=freq),shape=21, size = 3)+
   #   #geom_errorbar(data=topPred, aes(x = Predictors, ymin = av_vimp-sd_mse,ymax=av_vimp+sd_mse,color=freq))+
@@ -191,14 +159,12 @@ for(analyte in all_analytes){
   # pdf(paste(results_folder,paste0(Sys.Date(),'-RF_regression-',analyte,'-VIMP.pdf'),sep="/"),height = 8, width = 8)
   # print(vimp_p)
   # dev.off()
-  
   # ALE Plots 
   ale_sel_dt <- ale_dt %>% filter(Analyte == analyte) 
   ale_sel_dt <-  ale_sel_dt %>% filter(pred %in% levels(vimp_sel$Predictors)) 
   ale_sel_dt$pred <- factor(ale_sel_dt$pred,levels = rev(levels(vimp_sel$Predictors)))
- 
-  #ale_sel_dt <-  ale_sel_dt[ale_sel_dt$pred == "VE303_03",]
   
+  # ALE Plots
   # p_p <- ggplot(data = ale_sel_dt ,aes(x = x.values, y = f.values)) +
   #   geom_line(aes(group = nrep), alpha = 0.2)+
   #   #geom_line(data = pp_dt_final_median ,aes(x = x, y = y_med, color = trial))+
@@ -215,11 +181,11 @@ for(analyte in all_analytes){
   # print(p_p)
   # dev.off()
   
-  
-  # Fit a logistic growth curve and measure the  growth factor
+  # Fit a straight line and compute the slope
   ale_sel_dt$logx <- log10(ale_sel_dt$x.values + 10^(-8))
   ale_sel_dt$norm_y <- norm_range(ale_sel_dt$f.values, 0, 1)
   
+  # Optional plots 
   # p_p <- ggplot(data = ale_sel_dt ,aes(x = logx, y = norm_y)) +
   #   geom_point()+
   #   #geom_line(aes(group = nrep), alpha = 0.2)+
@@ -272,7 +238,6 @@ slope_dt_w$pred <-  NULL
 
 
 # Bile Acids (BA) 
-
 SBA <-  c("Deoxycholic.Acid","Lithocholic.Acid","Ursodeoxycholic.Acid",
           "Glycoursodeoxycholic.Acid","Tauroursodeoxycholic.Acid","Taurolithocholic.Acid",
           "Glycolithocholic.Acid","Taurodeoxycholic.Acid","Glycodeoxycholic.Acid")
@@ -285,8 +250,6 @@ met_analyte <-  data.frame(Type = c(rep("Primary BA", length(PBA)),rep("Secon BA
 cor_dt_w_BA <- slope_dt_w[,grep("Acid",names(slope_dt_w)) ]
 
 cor_dt_w_BA <- cor_dt_w_BA[rowSums(is.na(cor_dt_w_BA)) != ncol(cor_dt_w_BA), ]
-
-
 
 met_analyte_ba <- met_analyte[met_analyte$Type != "SCFA",]
 met_analyte_ba <- met_analyte_ba[match(names(cor_dt_w_BA), met_analyte_ba$Analyte),]
@@ -314,22 +277,19 @@ met_analyte_ba$Cat[met_analyte_ba$Analyte %in%
 library("ComplexHeatmap")
 
 annotations <- data.frame(Cat = met_analyte_ba$Cat,Class =  met_analyte_ba$Type, Mechanism = met_analyte_ba$Mechanism)
-
-
-
 ha_column = HeatmapAnnotation(Cat = met_analyte_ba$Cat,
                               Class =  met_analyte_ba$Type,
                               Mechanism = met_analyte_ba$Mechanism,
                               col=list(Cat = c("Unconjugated BA" = "#b2182b","Primary Conjugated BA" = "#ef8a62",
-                                                           "Secondary Conjugated BA"= "#67a9cf","Secondary DeConjugated BA" = "#2166ac" ),
-                                                   Class=c("Primary BA" = "#1b9e77","Secon BA"= "#d95f02"),
-                                                   Mechanism = c("bai Dehydroxylation" = "#f26391","Epimerization"= "#6e3999")
-))
+                                               "Secondary Conjugated BA"= "#67a9cf","Secondary DeConjugated BA" = "#2166ac" ),
+                                       Class=c("Primary BA" = "#1b9e77","Secon BA"= "#d95f02"),
+                                       Mechanism = c("bai Dehydroxylation" = "#f26391","Epimerization"= "#6e3999")
+                              ))
 library("circlize")
 
 mat<-as.matrix(cor_dt_w_BA)     
-mat2<-scale(t(mat), scale = F, center = F)
-mat2<-t(mat2)
+#mat2<-scale(t(mat), scale = F, center = F)
+mat2<- mat
 # Setting NA to zero
 mat2[is.na(mat2)] <- 0
 jet.colors <-   colorRamp2(c(-0.01, 0, 0.05), c("blue", "white", "red"))
@@ -340,70 +300,6 @@ tax_ba <- tax_dt[tax_dt$Species %in% rownames(mat2),]
 tax_ba[] <- lapply(tax_ba, as.character)
 tax_ba <- tax_ba[order(tax_ba$GTDB_phylum,tax_ba$GTDB_order),]
 
-
-#tax_ba <- tax_ba[match( rownames(mat2),tax_ba$X),]
-
-
-# # Get unique Phylum
-# 
-# cart_col <- paste0(c("blue","orange","red","brown","green", "purple","pink","grey",
-#                      "turquoise","sand","taupe","kaki","harmo")
-#                    ,".pal")
-# 
-# 
-# phylum_col <- cart_col[1:length(unique(tax_ba$Phylum))]
-# 
-# unique(tax_ba$Phylum)
-# unique(tax_ba$Class)
-# 
-# shades_num <- tax_ba %>%
-#   group_by(Phylum) %>%
-#   mutate(unique_types = n_distinct(Order))%>% select(Phylum,unique_types) %>% unique
-# 
-# library(paletteer)
-# order_col <- mapply(function(x ,y){ paletteer_dynamic("cartography", !!x,y)},x = phylum_col ,y = shades_num$unique_types,
-#                     SIMPLIFY = F)
-# unlist(order_col)
-# 
-# tax_ba_sel <-  unique(tax_ba[,c("Phylum","Order")])
-# 
-# order_col <- as.vector(unlist(order_col))
-# names(order_col) <- tax_ba_sel$Order
-# 
-# phylum_col <- gsub(".pal","",phylum_col)
-# names(phylum_col) <- unique(tax_ba_sel$Phylum)
-
-
-
-# tax_ba_sel$Order_col <- as.vector(unlist(order_col))
-# tax_ba_sel$Phylum_col <- rep(gsub(".pal","",phylum_col),shades_num$unique_types)
-# 
-# order = as.character(tax_ba$Order)
-# Phylum = as.character(tax_ba$Phylum)
-
-
-
-
-
-
-# col_class <- assignCols(unique(Class),unique(Class))
-# class_col <- col_class[[1]]
-# names(class_col) <- col_class[[2]] 
-# 
-# library(RColorBrewer)
-#    phy.col <-gsub(".pal","",rep(phylum_col, as.numeric(table(Phylum))))
-# 
-#    order.col <-  rep(as.vector(unlist(order_col)), as.numeric(table(order)))
-#    
-# phylum_col <- brewer.pal(length(unique(Phylum)),"Set1")
-# names(phylum_col) <- unique(Phylum) 
-
-
-
-#tax_ba <- tax_ba[match( rownames(mat2),tax_ba$X),]
-
-#tmp_dt <- data.frame(mat2)
-
 mat2 <- mat2[match(tax_ba$Species,rownames(mat2)),]
 
 
@@ -411,47 +307,12 @@ rownames(mat2) <- gsub("_"," ",rownames(mat2))
 colnames(mat2) <- gsub("\\."," ",colnames(mat2))
 
 ha1 = HeatmapAnnotation(Order = tax_ba$GTDB_order,
-                       col = list(Order = order_col), which = "row")
+                        col = list(Order = order_col), which = "row")
 ha2 = HeatmapAnnotation(Phylum = tax_ba$GTDB_phylum,
                         col = list(Phylum = phylum_col), which = "row")
 
 split_rows <-  tax_ba$GTDB_phylum
 split_rows <- factor(split_rows, levels= unique(split_rows))
-
-#"Legends"
-# lgd = Legend(labels = month.name[1:10], legend_gp = gpar(fill = 1:10), 
-#              title = "foo", ncol = 3)
-# draw(lgd)
-# 
-# tax_ba$Order
-# 
-# lgd <- 
-
-ht1 = Heatmap(mat2, name = "Slope", column_title = NA, top_annotation = ha_column,
-              clustering_distance_rows = "euclidean",
-              split = split_rows, row_gap = unit(2, "mm"),border = TRUE,
-              row_title_gp = gpar(fontsize = 10,fontface = "bold"),
-              row_title_rot = 0,
-              left_annotation = ha1,
-              clustering_method_rows = "complete",row_names_side = "left", km=1, color_space = "LAB",
-              row_dend_side="right",
-              col=jet.colors,
-              #heatmap_legend_param = list(),
-              clustering_method_columns = "ward.D",
-              width=2, row_names_max_width = unit(8, "cm"),show_column_names= T,
-              row_names_gp = gpar(fontsize = 9), cluster_columns = T,cluster_rows = T,na_col="white")
-#ht1
-#ha1+ht1+ha2
-
-#ht2 <- Heatmap(Class,col = class_col, name = "Class", width = unit(5, "mm"),show_heatmap_legend = T)
-#ht3 <- Heatmap(Phylum,col = phylum_col, name = "Phylum", width = unit(5, "mm"),show_heatmap_legend = T)
-
-#ht_ba <- ht1 + ht2 + ht3
-
-pdf(paste(results_folder,'/',Sys.Date(),'_Heatmap_BA.pdf',sep=""),height = 13, width = 13)
-draw(ht1)
-dev.off()
-
 
 # Presence absence
 mat_logic  <- mat2 
@@ -504,17 +365,12 @@ pdf(paste(results_folder,'/',Sys.Date(),'_Heatmap_logical_ba.pdf',sep=""),height
 draw(ht1)
 dev.off()
 
-
-
-
 # SCFA
 slope_dt_w_SCFA <- slope_dt_w[,names(slope_dt_w) %in% SCFA]
-
 slope_dt_w_SCFA <- slope_dt_w_SCFA[rowSums(is.na(slope_dt_w_SCFA)) != ncol(slope_dt_w_SCFA), ]
-
 mat<-as.matrix(slope_dt_w_SCFA)     
-mat2<-scale(t(mat), scale = F, center = F)
-mat2<-t(mat2)
+#mat2<-scale(t(mat), scale = F, center = F)
+mat2<- mat
 # Setting NA to zero
 mat2[is.na(mat2)] <- 0
 library(circlize)
@@ -526,47 +382,10 @@ tax_scfa <- tax_dt[tax_dt$Species %in% rownames(mat2),]
 tax_scfa[] <- lapply(tax_scfa, as.character)
 tax_scfa <- tax_scfa[order(tax_scfa$GTDB_phylum,tax_scfa$GTDB_order),]
 
-
-#tax_scfa <- tax_scfa[match(rownames(mat2),tax_scfa$X),]
-
-
-# Get unique Phylum
-
-# cart_col <- paste0(c("blue","orange","red","brown","green", "purple","pink","wine","grey",
-#                      "turquoise","sand","taupe","kaki","harmo")
-#                    ,".pal")
-# 
-# 
-# phylum_col <- cart_col[1:length(unique(tax_scfa$Phylum))]
-# 
-# unique(tax_scfa$Phylum)
-# unique(tax_scfa$Class)
-# 
-# shades_num <- tax_scfa %>%
-#   group_by(Phylum) %>%
-#   mutate(unique_types = n_distinct(Order))%>% select(Phylum,unique_types) %>% unique
-# 
-# library(paletteer)
-# order_col <- mapply(function(x ,y){ paletteer_dynamic("cartography", !!x,y)},x = phylum_col ,y = shades_num$unique_types,
-#                     SIMPLIFY = F)
-# unlist(order_col)
-# 
-# tax_scfa_sel <-  unique(tax_scfa[,c("Phylum","Order")])
-# 
-# order_col <- as.vector(unlist(order_col))
-# names(order_col) <- tax_scfa_sel$Order
-# 
-# phylum_col <- gsub(".pal","",phylum_col)
-# names(phylum_col) <- unique(tax_scfa_sel$Phylum)
-
 mat2 <- mat2[match(tax_scfa$Species,rownames(mat2)),]
-
 
 rownames(mat2) <- gsub("_"," ",rownames(mat2))
 colnames(mat2) <- gsub("\\."," ",colnames(mat2))
-
-
-
 colnames(mat2) <- gsub("X2.","2-",colnames(mat2))
 
 ha1 = HeatmapAnnotation(Order = tax_scfa$GTDB_order,
@@ -576,32 +395,6 @@ ha2 = HeatmapAnnotation(Phylum = tax_scfa$GTDB_phylum,
 
 split_rows <-  tax_scfa$GTDB_phylum
 split_rows <- factor(split_rows, levels= unique(split_rows))
-
-
-ht1 = Heatmap(mat2, name = "Slope", column_title = NA, 
-              clustering_distance_rows = "euclidean",
-              split = split_rows, row_gap = unit(2, "mm"),border = TRUE,
-              row_title_gp = gpar(fontsize = 10,fontface = "bold"),
-              row_title_rot = 0,
-              left_annotation = ha1,
-              clustering_method_rows = "complete",row_names_side = "left", km=1, color_space = "LAB",
-              row_dend_side="right",
-              col=jet.colors,
-              #heatmap_legend_param = list(),
-              clustering_method_columns = "ward.D",
-              width=2, row_names_max_width = unit(8, "cm"),show_column_names= T,
-              row_names_gp = gpar(fontsize = 9), cluster_columns = T,cluster_rows = T,na_col="white")
-#ht1
-#ha1+ht1+ha2
-
-#ht2 <- Heatmap(Class,col = class_col, name = "Class", width = unit(5, "mm"),show_heatmap_legend = T)
-#ht3 <- Heatmap(Phylum,col = phylum_col, name = "Phylum", width = unit(5, "mm"),show_heatmap_legend = T)
-
-#ht_ba <- ht1 + ht2 + ht3
-
-pdf(paste(results_folder,'/',Sys.Date(),'_Heatmap_SCFA.pdf',sep=""),height = 13, width = 10)
-draw(ht1)
-dev.off()
 
 
 # Presence absence
@@ -621,13 +414,9 @@ ht1 = Heatmap(mat_logic, name = "Slope", column_title = NA,
               row_title_rot = 0,
               left_annotation = ha1,
               clustering_method_rows = "complete",row_names_side = "left", km=1, color_space = "LAB",
-              #row_dend_side="right",
               col=cols,
-              #heatmap_legend_param = list(),
-              #clustering_method_columns = "ward.D",
               width=2, row_names_max_width = unit(8, "cm"),show_column_names= T,
               row_names_gp = gpar(fontsize = 9),
-              #cluster_columns = T,cluster_rows = T,
               heatmap_legend_param = list(title = "Relation",
                                           at = c("Positive", "Negative"), labels = c("Positive", "Negative")),
               na_col="white")
@@ -637,19 +426,3 @@ ht1 = Heatmap(mat_logic, name = "Slope", column_title = NA,
 pdf(paste(results_folder,'/',Sys.Date(),'_Heatmap_SCFA_logical.pdf',sep=""),height = 13, width = 10)
 draw(ht1)
 dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
