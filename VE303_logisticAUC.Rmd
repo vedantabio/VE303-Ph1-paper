@@ -29,7 +29,7 @@ VE303_OC_markerpanel = "Data/VE303_Ph2_Extended_Marker_Data_20210607.csv"
 
 ```{r Load Data and Compute Stool DNA Concentration}
 
-metadata = read.csv(VE303_metadata)[c(1:10,12,13,33,36,44:46)]
+metadata = read.csv(VE303_metadata)
 
 ### note: 
 # A = Quant.iT.DNA.Concentration..ng..U.00B5.L = ng DNA / uL Extract
