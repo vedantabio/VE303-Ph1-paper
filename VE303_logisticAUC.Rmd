@@ -21,9 +21,9 @@ library(FSA)
 ```{r VE303}
 
 ## VE303 Metadata 
-VE303_metadata = "../../J Faith - SysBio Collaboration/Abundance Tables and Metadata/VE303-001/2019-07-24 Ph1_metadata_all.csv"
+VE303_metadata = "Data/2019-07-24 Ph1_metadata_all.csv"
 
-VE303_OC_markerpanel = "../../UMass_Core_Vedanta_All_Programs/Unblind_clinical_data/VE303_Ph1/Updated_Marker_Panel/VE303_Ph2_Extended_Marker_Data_20210607.csv" 
+VE303_OC_markerpanel = "Data/VE303_Ph2_Extended_Marker_Data_20210607.csv" 
 
 ```
 
