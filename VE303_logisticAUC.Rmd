@@ -1,0 +1,471 @@
+---
+title: "VE303 Logistic AUC"
+author: "E. Crossette"
+date: "May 2021"
+output: 
+  html_document:
+    number_sections: true
+    fig_caption: yes
+---
+
+```{r Environment Setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+source('R_scripts/libraries.R')
+library(minpack.lm)
+library(FSA)
+
+```
+
+# Paths to data used in AUC analysis
+```{r VE303}
+
+## VE303 Metadata 
+VE303_metadata = "../../J Faith - SysBio Collaboration/Abundance Tables and Metadata/VE303-001/2019-07-24 Ph1_metadata_all.csv"
+
+VE303_OC_markerpanel = "../../UMass_Core_Vedanta_All_Programs/Unblind_clinical_data/VE303_Ph1/Updated_Marker_Panel/VE303_Ph2_Extended_Marker_Data_20210607.csv" 
+
+```
+
+```{r Load Data and Compute Stool DNA Concentration}
+
+metadata = read.csv(VE303_metadata)[c(1:10,12,13,33,36,44:46)]
+
+### note: 
+# A = Quant.iT.DNA.Concentration..ng..U.00B5.L = ng DNA / uL Extract
+# B = Elution.Volume...U.00B5.L. = uL extract
+# A*B = total DNA in 250uL homogenized stool
+# Vb = volume genoteck buffer (2 mL = 2000mg)
+# DNA / mg Stool = A*B * 250 * (Vb)/mass stool
+
+# assumes stool and homogenizer are the same density 1uL = 1mg
+metadata = metadata %>%
+  mutate(ng_DNA = Quant.iT.DNA.Concentration..ng..U.00B5.L. * Elution.Volume...U.00B5.L.,
+         ng_DNA.mg_stool =   (ng_DNA / 250) * ((2000)/Weight.of.collected.sample..mg.))
+
+# This helps with plotting
+metadata$Timepoint.Calc.Vanco = reorder(metadata$Timepoint.Calc.Vanco, metadata$Collection.Day.Norm, FUN = mean)
+
+```
+
+
+## VE303 OneCodex Colonization Data
+```{r Load VE303 colonization data - OneCodex}
+
+# Load VE303 Marker panel Data
+VE303_001_marker = read.csv(VE303_OC_markerpanel)[-c(2:3, 5:21, 23:24)]
+
+# Fix barcode ID to merge with metadata
+VE303_001_marker$barcode_id = as.character(VE303_001_marker$barcode_id)
+VE303_001_marker$barcode_id = paste("S0", VE303_001_marker$barcode_id, sep="")
+colnames(VE303_001_marker)[2] = "sample_name"
+
+# Merge metadata
+VE303 = merge(VE303_001_marker, metadata)
+rm(VE303_001_marker)
+
+# Compute and summarize ranges of absolute abundances
+VE303_abs_abund = VE303 %>%
+  mutate(ng_strain_mg_Sample = 
+           if_else(detection_status == "Detected", 
+                   targeted_panel_relative_abundance * ng_DNA.mg_stool, 
+                   0)
+         )
+
+# write.csv(VE303_abs_abund, "VE303_Ph2_Extended_Marker_Data_20210607_abs_abund.csv")
+
+```
+
+
+```{r - RA observed in baseline timepoints}
+
+# What is the maximum relative abundance of VE303 strains in the baseline samples or non-VE303 treated subjects (Vanco Cohort)
+
+baseline_vanco = 
+  subset(VE303_abs_abund, Subject.Cohort=="Vanco" | Timepoint.Calc=="Baseline") %>%
+  subset(detection_status == "Detected")
+
+max(baseline_vanco$targeted_panel_relative_abundance)*100
+
+rm(baseline_vanco)
+
+```
+
+```{r calculating acute vs durable engraftment}
+
+# The total VE303 RA peaked between 1 and 2 weeks after starting VE303, reaching a median total RA of 2.6% and 7.0% at day 14 for Cohorts 4 and 5, respectively.
+
+# VE303 strain colonization steadily declined after stopping VE303 but the strains were still present over the 1-year follow-up period to a total RA of 0.5% and 0.1% at 1-year.
+
+# Strain detection and RA remained high through week 12 (11 and 10 weeks after stopping VE303 in Cohorts 4 and 5, respectively), with ... a total RA greater than 1%. 
+
+median_RA_cohorts45 = VE303_abs_abund %>%
+  subset(Subject.Cohort==4 | Subject.Cohort==5) %>%
+  mutate(detection_status_adj_RA = case_when(
+    detection_status == "Detected" ~ targeted_panel_relative_abundance,
+    detection_status != "Detected" ~ 0
+  )) %>%
+  group_by(Subject.Cohort, Subject.ID, Day.in.Treatment.original,Collection.Day.Norm, 
+           Day.from.vanco, Timepoint.Calc,  Timepoint.Calc.Vanco, Day.from.Start, Collection.Date) %>%
+  summarize(total_RA_percent = sum(detection_status_adj_RA)*100,
+            n_strains = n_distinct(organism))  %>%
+subset(Timepoint.Calc=="Day 14" | Timepoint.Calc =="Week 52" | Day.in.Treatment.original=="Day 08" | Day.in.Treatment.original=="Week 12") %>%
+  group_by(Day.in.Treatment.original, Subject.Cohort) %>%
+  # group_by(Timepoint.Calc, Subject.Cohort) %>%
+  summarize(median_RA = median(total_RA_percent),
+            n_subjects = n_distinct(Subject.ID))
+
+
+rm(median_RA_cohorts45)
+
+```
+
+"In subjects dosed with VE303 following vancomycin (Cohorts 1 to 5), the VE303 component strains were detected within the first 24 to 48 hours after VE303 administration (Figure 3). After a single dose of VE303 (Cohorts 1, 2, and 3), a median of 35.7% to 62.5% of the strains were detected 2 days after the dose of VE303 (study day 8) (Figure 3A)."
+
+```{r computing median strain detection }
+# Goal: obtain a p-value for these statements
+# The number of VE303 strains detected was not improved with an increase in dose level in the single ascending dose cohorts (Cohorts 1 – 3)
+
+# Within first 48 hours after dosing 
+med_strain_detection = VE303 %>%
+  mutate(Subject.Cohort = if_else(Subject.Cohort=="Sentinel", "1", Subject.Cohort)) %>%
+  subset(as.numeric(Subject.Cohort) <= 3 & Timepoint.Calc=="Day 8") %>%
+  group_by(Subject.ID, Subject.Cohort, Collection.Date, sample_name) %>%
+  summarize(n_detection = sum(detection_status=="Detected"),
+            n_lowconf = sum(detection_status=="Insufficient data"),
+            n_not_detected = sum(detection_status=="Not detected"),
+            check = n_detection + n_lowconf + n_not_detected) %>%
+  # Two samples collected for Subject 102 and 20 
+  group_by(Subject.ID, Subject.Cohort) %>%
+  summarize(n_detected = mean(n_detection))
+
+kruskal.test(n_detected ~ Subject.Cohort, data = med_strain_detection)
+
+# Median strains detected on Study day 8
+med_strain_detection_study_day8 = VE303 %>%
+  mutate(Subject.Cohort = if_else(Subject.Cohort=="Sentinel", "1", Subject.Cohort)) %>%
+  subset(Timepoint.Calc=="Day 8") %>%
+  # Some have duplicates, to be consistent with bubble plots, pick earliest collection date
+  group_by(Subject.ID, Subject.Cohort, organism, detection_status, Timepoint.Calc, Collection.Date, Day.in.Treatment.original) %>%
+  summarize(Collection.Date=min(Collection.Date)) %>%
+  group_by(Subject.ID, Subject.Cohort) %>%
+  summarize(n_detection = sum(detection_status=="Detected"),
+            n_lowconf = sum(detection_status=="Insufficient data"),
+            n_not_detected = sum(detection_status=="Not detected"),
+            check = n_detection + n_lowconf + n_not_detected,
+            percent_detected = n_detection/8) %>%
+  group_by(Subject.Cohort) %>%
+  summarize(median_detected = median(percent_detected))
+
+rm(med_strain_detection_study_day8, med_strain_detection)
+
+
+```
+
+
+```{r Median Strain Detection, Cohorts 4 and 5}
+# Strain detection and RA remained high through week 12 (11 and 10 weeks after stopping VE303 in Cohorts 4 and 5, respectively), with a median number of strains detected of at least 5 
+
+# Two days after the start of VE303 administration (study day 8), the median percent of strains detected in Cohorts 4 and 5 were 75% and 25%, 
+
+med_strain_detection = VE303 %>%
+  subset(Subject.Cohort==4 | Subject.Cohort==5) %>%
+  subset(Timepoint.Calc=="Day 14" | Timepoint.Calc =="Week 52" | Day.in.Treatment.original=="Day 08" | Day.in.Treatment.original=="Week 12") %>%
+  group_by(Subject.ID, Subject.Cohort, Day.in.Treatment.original, Timepoint.Calc, Collection.Date, sample_name) %>%
+  summarize(n_detection = sum(detection_status=="Detected"),
+            n_lowconf = sum(detection_status=="Insufficient data"),
+            n_not_detected = sum(detection_status=="Not detected"),
+            check = n_detection + n_lowconf + n_not_detected,
+            percent_detected = n_detection/8) %>%
+  group_by(Subject.Cohort, Day.in.Treatment.original) %>%
+  summarize(percent_detected = median(percent_detected),
+            n_detected = median(n_detection))
+```
+
+
+```{r Running Model on all Data}
+
+# Initial Conditions
+n0_init =1E-6
+r_init = 1.3
+k_init  = 0.05
+
+# Essentially Growthcurver 
+try_model <- function(dat, default = NA) {
+  tryCatch(nlsLM(ng_strain_mg_Sample ~ k / (1 + ( (k - n0) / n0) * exp(-r * Collection.Day.Norm)),
+                    start = list(k = k_init,
+                                 n0 = n0_init,
+                                 r = r_init),
+                 lower = c(0, 0, 0),
+                 # upper = c(Inf, max(ng_strain_mg_Sample), Inf),
+                    control = list(maxiter = 1024),
+                    data = dat),
+   error = function (e) {return(NA)})
+}
+
+model_params <- VE303_abs_abund %>% 
+  filter(Subject.Cohort!=8) %>%
+  group_by(Subject.ID, Subject.Cohort, organism) %>% 
+  subset(Collection.Day.Norm < 80) %>%
+  do(fit = try_model(dat = .)) %>%
+  filter(length(fit)>1) %>%
+  mutate(k = coef(fit)[[1]],
+         n0 = coef(fit)[[2]],
+         r = coef(fit)[[3]],
+         RSE = sigma(fit)) %>% 
+  select(-fit)
+
+no_fit_samples <- VE303_abs_abund %>% 
+  filter(Subject.Cohort!=8) %>%
+  group_by(Subject.ID, Subject.Cohort, organism) %>% 
+  subset(Collection.Day.Norm < 80) %>%
+  do(fit = try_model(dat = .)) %>%
+  filter(length(fit)==1)
+  
+
+ 
+```
+
+```{r Plotting}
+
+
+times = data.frame(t = 1:60)
+strain_08 = subset(model_params, organism == "VE303-08")
+
+absolute_abundances = subset(VE303_abs_abund, organism == "VE303-08")
+
+    logic_simulated = merge(times, strain_08)
+    logic_simulated = logic_simulated %>%
+      mutate(y = k / (1 + ( (k - n0) / n0) * exp(-r * t)))
+
+    absolute_abundances <- merge(absolute_abundances, strain_08)
+    absolute_abundances$sigma_facet = paste("sigma =", round(absolute_abundances$RSE, 2))
+    
+supplemental_3E = 
+  ggplot(subset(absolute_abundances, Subject.ID == 171), aes(x=Collection.Day.Norm, y=ng_strain_mg_Sample)) + 
+      geom_point()+
+      xlim(0,60) +
+  ylim(0,.4) +
+      geom_line(data=subset(logic_simulated,Subject.ID == 171) , aes(t, y), color = "red")+
+      facet_wrap(~Subject.ID, scale = "free_y"
+                 #+auc_facet
+                 )+
+      labs(y = "Strain Concentration (ng strain/mg Stool)",
+           x = "Time, Days") +
+      # scale_y_continuous(trans = "sqrt")+
+      pretty_plot
+
+# ggsave(supplemental_3E, filename = "figures/exampleAUC_3E.jpeg", height = 4,  width= 4, units = "in", dpi = 600)
+
+# plot ranked distribution
+# hist(model_params$RSE, main = "Histogram of sigma values", xlab = "sigma")
+
+# All samples
+  ggplot(absolute_abundances, aes(x=Collection.Day.Norm, y=ng_strain_mg_Sample)) + 
+      geom_point()+
+      xlim(0,60) +
+  ylim(0,.4) +
+      geom_line(data=logic_simulated, aes(t, y), color = "red")+
+      facet_wrap(~Subject.ID, scale = "free_y"
+                 #+auc_facet
+                 )+
+      labs(y = "Strain Concentration (ng strain/mg Stool)",
+           x = "Time, Days") +
+      # scale_y_continuous(trans = "sqrt")+
+      pretty_plot
+
+
+```
+
+
+```{r AUC by integration}
+
+# Define function for integration
+integrand <- function(x, k, n0, r) {( k / (1 + ((k - n0) / n0) * exp(-r * x)))}
+
+# integrate using model outputs
+auc_l = model_params %>%
+  mutate(auc_l = integrate(integrand, 0, 20, k=k, n0=n0, r = r)$value)
+
+strain.cols.303<- c("VE303-01" = "#1b9e77", "VE303-02" = "#d95f02", "VE303-03" = "#7570b3", "VE303-04" = "#e7298a", "VE303-05" = "#66a61e", "VE303-06" = "#e6ab02", "VE303-07" = "#a6761d", "VE303-08" = "#666666")
+
+# Add "Cohort" before Numeric Cohorts for plots
+auc_l$Cohort = if_else(grepl("^[0-9]{1,}$", auc_l$Subject.Cohort), 
+                       paste("Cohort", auc_l$Subject.Cohort), if_else(auc_l$Subject.Cohort=="Sentinel", "Cohort 1", 
+                       auc_l$Subject.Cohort))
+
+# Manually order Factors
+auc_l$factor_order <- factor(auc_l$Cohort, 
+                            levels=c("Vanco", "Cohort 1", "Cohort 2", 
+                                     "Cohort 3", "Cohort 4", "Cohort 5", "Cohort 6"))
+
+
+# Add new metadata based on dosing regimen
+auc_l$dose_duration <- case_when(
+  auc_l$Cohort == "Vanco" ~ "No VE303",
+  auc_l$Cohort == "Cohort 1" | 
+    auc_l$Cohort == "Cohort 2" | 
+      auc_l$Cohort =="Cohort 3" ~ "Single Day\nCohorts 1,2,3",
+  auc_l$Cohort == "Cohort 4" ~ "5 Days\nCohort 4",
+  auc_l$Cohort == "Cohort 5" ~ "14 Days\nCohort 5",
+  auc_l$Cohort == "Cohort 6" ~ "21 Days\nCohort 6"
+)
+
+auc_l$dose_duration <- factor(auc_l$dose_duration, 
+                            levels=c("No VE303", "Single Day\nCohorts 1,2,3", "5 Days\nCohort 4", "14 Days\nCohort 5", "21 Days\nCohort 6"))
+
+# write.csv(auc_l, "logistic_engraftment.csv", row.names = FALSE)
+
+
+```
+
+```{r - Comparisons of AUC between/within cohorts}
+
+# Are ACU in Single dosed cohorts different?
+single_dose_cohorts = subset(auc_l, dose_duration == "Single Day")
+kruskal.test(auc_l ~ Cohort, data = single_dose_cohorts)
+                           
+# Are Single dose cohorts different than mult-dosed cohorts?
+sub_cohorts = subset(auc_l, 
+                     # Exclude Vanco only and Cohort six (no vanco)
+                     dose_duration == "Single Day" |
+                     dose_duration == "5 Days" |
+                     dose_duration == "14 Days")
+
+# Kruskal-Wallace test
+kruskal.test(auc_l ~ Cohort, data = sub_cohorts)
+
+# Post-hoc Dunn test:
+dunnTest(auc_l ~ dose_duration,
+         data=sub_cohorts,
+         method="holm")
+
+# Obtain median AUC values
+auc_l %>% group_by(dose_duration) %>% summarize(median = median(auc_l))
+
+rm(sub_cohorts)
+
+```
+
+```{r Strain-level differences in AUC}
+
+# Do any strains significantly colonize in Cohorts 4 and 5?
+
+# Subset Cohorts 4 and 5
+cohorts_45 = subset(auc_l, 
+                     dose_duration == "5 Days" |
+                     dose_duration == "14 Days")
+
+
+# Kruskal-Wallace test
+kruskal.test(auc_l ~ organism, data = cohorts_45)
+
+# Post-hoc Dunn test:
+dunnTest(auc_l ~ organism,
+         data=cohorts_45,
+         method="holm")
+
+
+rm(cohorts_45)
+```
+
+
+```{r plot strain-level AUC by DOSING}
+
+AUC_dosing = 
+  ggplot(subset(auc_l, RSE<0.4), 
+       aes(x=organism, y=auc_l))+
+  geom_boxplot(aes(color=organism, fill=organism), alpha=0.25, outlier.shape = NA) +
+  scale_fill_manual(values = strain.cols.303) +
+  facet_wrap(~dose_duration, nrow=1) +
+  ylim(0,7.5) +
+  scale_color_manual(values = strain.cols.303) +
+  geom_jitter(aes(color=organism, y = auc_l, x = organism)) +
+  labs(y = "Area under Logistic Curve",
+       x = "VE303 Organism") +
+  theme(
+    legend.position = 'none',
+    axis.text.x=element_text(angle=90, hjust=1),
+    panel.border = element_rect(color="grey30", fill=NA),
+    panel.background = element_rect(color="grey30", fill="white"),
+    strip.background = element_rect(color="grey30"),
+    panel.grid.major = element_line(color="grey93"))
+
+ggsave(AUC_dosing, filename = "figures/area_under_logistic_highres.jpeg", 
+       height = 3,  width= 11, units = "in")
+
+```
+
+
+
+```{r plot strain-level AUC by cohort}
+
+area_under_logistic = 
+  ggplot(subset(auc_l, RSE<0.4), 
+       aes(x=organism, y=auc_l))+
+  geom_boxplot(aes(color=organism, fill=organism), alpha=0.25, outlier.shape = NA) +
+  scale_fill_manual(values = strain.cols.303) +
+  facet_wrap(~factor_order, nrow=1) +
+  ylim(0,7.5) +
+  scale_color_manual(values = strain.cols.303) +
+  geom_jitter(aes(color=organism, y = auc_l, x = organism)) +
+  labs(y = "Area under Logistic Curve",
+       x = "VE303 Organism") +
+  theme(
+    legend.position = 'none',
+    axis.text.x=element_text(angle=90, hjust=1),
+    panel.border = element_rect(color="grey30", fill=NA),
+    panel.background = element_rect(color="grey30", fill="white"),
+    strip.background = element_rect(color="grey30"),
+    panel.grid.major = element_line(color="grey93"))
+
+ggsave(area_under_logistic, filename = "figures/area_under_logistic_highRes.jpeg", height = 3,  width= 11, units = "in")
+
+```
+
+
+```{r Total VE303 Colonization by AUC}
+
+coh.cols <- c("Vanco" = "#0487e3", "Cohort 1" = "#dc2d00", "Cohort 2" = "#5b0076", "Cohort 3" = "#629449", "Cohort 4" = "#561600", "Cohort 5" = "#004631", "Cohort 6" = "#b87800", "Cohort 8" = "#b97696")
+
+auc_l_total = auc_l %>%
+  filter(RSE<0.4) %>%
+  group_by(Subject.ID, factor_order, dose_duration) %>%
+  summarize(total_AUC = sum(auc_l),
+            median_AUC = median(auc_l)) %>%
+  mutate(facet_title = "Total AUC per Subject")
+
+ total_VE303 = 
+   ggplot(auc_l_total, 
+       aes(x=dose_duration, y=total_AUC))+
+  geom_boxplot(# aes(color=factor_order, fill=factor_order), 
+    # alpha=0.25, 
+    outlier.shape = NA) +
+  facet_wrap(~facet_title) +
+  scale_color_manual(values = coh.cols)+
+  # scale_fill_manual(values = coh.cols)+
+  # ylim(0,10) +
+  geom_jitter(aes(y = total_AUC, x = dose_duration, color=factor_order), size = 2) +
+  labs(y = "Total Area under Logistic Curve\n",
+       x = "Dosing Group",
+       color = "Cohort") +
+  theme(
+    # legend.position = 'none',
+    axis.title.y = element_blank(),
+    axis.text.x=element_text(angle=90, hjust=1),
+    panel.border = element_rect(color="grey30", fill=NA),
+    panel.background = element_rect(color="grey30", fill="white"),
+    strip.background = element_rect(color="grey30"),
+    panel.grid.major = element_line(color="grey93"))
+
+
+# Combine plots using patchwork
+both_plots = AUC_dosing + total_VE303 + plot_layout(widths = c(7, 2))
+
+# Save plots as Jpeg
+ggsave(total_VE303, filename = "figures/totalAUC_highres.jpeg", height = 3,  width= 4, units = "in", dpi = 1400)
+
+```
+
+
+
