@@ -25,11 +25,9 @@ results_folder <- paste(mainDir,subDir,sep="/")
 library(stringr)
 
 ###############Read marker panel data ########################
-m_panel_dt = read.csv("../data/Microbiome/Updated_Marker_panel/VE303_Ph2_Extended_Marker_Data_20210607.csv")
-
+m_panel_dt = read.csv("../Data/VE303_Ph2_Extended_Marker_Data_20210607.csv")
 # Three replicates of this sample. Remove one
 m_panel_dt <- m_panel_dt[-grep("S04310504100010-166-S28_S28_L001_001.fastq.gz",m_panel_dt$filename),]
-
 #Generate a list of -subsampled files and  remove the non-subsetted samples
 # This was done because some files were sequenced much deeper than others due to pooling
 subsampled <- m_panel_dt %>% 
@@ -51,7 +49,7 @@ names(m_panel_dt)
 unique(m_panel_dt$SampleID)
 
 dup_dt  <- stack(table(m_panel_dt$SampleID))
-meta<-  read.csv("../data/Microbiome/2019_07_24_Ph1_metadata_all.csv")
+meta<-  read.csv("../Data/2019_07_24_Ph1_metadata_all.csv")
 #Filter out the Cohort 8 samples and week 24 - These are excluded from the publication
 # Filter out the samples collected during Vanco treatment - these were excluded from publication
 meta <- meta %>% 
@@ -457,9 +455,11 @@ print(phy_p)
 dev.off()
 
 
+# Read taxa abundance at different taxonomic levels
+oc_tax_abun <-  readRDS("../Data/oc_tax_level_abun.rds")
 # Major Phylum abundance 
 # Read phylum level 
-phyla_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_phlyum_RA.csv")
+phyla_dt <- oc_tax_abun[["Phylum"]]
 unique(phyla_dt$sample_name)
 phyla_dt <- phyla_dt %>%
   filter(absolute_abund > 0)
@@ -544,7 +544,7 @@ dev.off()
 
 # Do similar to Class Clostridia
 # Read CLass level 
-class_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_class_RA.csv")
+class_dt <-  oc_tax_abun[["Class"]]
 unique(class_dt$sample_name)
 
 class_dt <- class_dt %>% 
@@ -576,19 +576,12 @@ sub_med_dt <-  med_dt[med_dt$GTDB_class %in% c("Clostridia"),]
 
 # Phylum cols
 class.cols <- c("Clostridia" = "#4daf4a")
-
-
 unique(class_dt$GTDB_class)
-
 
 library(ggplot2)
 library(dplyr)
 library(tidyr)
-
-
-
 pdf(paste0(results_folder,"/Absolute_abundance_CLass_Clostridia.pdf"),width = 20,height = 4)
-
 
 phy_p <- ggplot(sub_class_dt, aes( y= absolute_abund, x= Timepoint.Calc,
                                    fill = GTDB_class,color = GTDB_class)) + 
@@ -611,7 +604,3 @@ phy_p <- ggplot(sub_class_dt, aes( y= absolute_abund, x= Timepoint.Calc,
         axis.title.x = element_text(size=10,face="bold"))
 print(phy_p)      
 dev.off()
-
-
-
-

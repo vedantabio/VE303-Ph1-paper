@@ -17,15 +17,15 @@ library(tidyverse)
 
 ########Create result directory#############
 mainDir <- "../results"
-subDir <- paste0("LME_ve303_colonization_model/",gsub("-","_",Sys.Date()))
+subDir <- "LME_ve303_colonization_model"
 dir.create(file.path(mainDir, subDir), showWarnings = TRUE,recursive = TRUE)
 results_folder <- paste(mainDir,subDir,sep="/")
 
 # Import dataset
 # Add appropriated dated folder 
-input_data <-  readRDS("../results/Input_matrix/2021_12_20/input_data_rf.RDS")[["Species"]]
-abun_data <- readRDS("../results/Input_matrix/2021_12_20/ve303_abun_rf.RDS")[["Species"]]
-phy_orig <-  readRDS("../results/Input_matrix/2021_12_20/phy_list.RDS")[["Species"]]
+input_data <-  readRDS("../results/Input_matrix/input_data_rf.RDS")[["Species"]]
+abun_data <- readRDS("../results/Input_matrix/ve303_abun_rf.RDS")[["Species"]]
+phy_orig <-  readRDS("../results/Input_matrix/phy_list.RDS")[["Species"]]
 
 phy_list <-  subset_samples(phy_orig, !cohort_id_long %in% c("Vanco","Cohort 6") )
 phy_list <-  prune_taxa(taxa_sums(phy_list)>0, phy_list)

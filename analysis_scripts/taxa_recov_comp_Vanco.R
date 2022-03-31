@@ -35,27 +35,20 @@ col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = 
 
 # Now do the same thing but for all the cohorts
 # Read different tax level data
-tax_list <- list()
+
+
+
+tax_list <- readRDS("../Data/oc_tax_level_abun.rds")
+names(tax_list) <-  c("phylum","class","family","genus")
+
 tax_lev <- c("phylum","class","family","genus")[2]
 for(tax_lev in c("phylum","class","family","genus")){
   
-  if(tax_lev == "phylum"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_phlyum_RA.csv")
-  }else if(tax_lev == "class"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_class_RA.csv")
-  }else if(tax_lev == "family"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_family_RA.csv")
-  }else if(tax_lev == "genus"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_genus_RA.csv")
-  }else{
-    
-  }
-  
+  tax_dt <-  tax_list[[tax_lev]]
   tax_dt$Treatment <- tax_dt$Day.from.Start  
   tax_dt$cohort_id_long <-  factor(tax_dt$cohort_id_long, levels = unique(tax_dt$cohort_id_long))
   tax_dt$cohort_id_long <- relevel(tax_dt$cohort_id_long,ref = "Vanco")
   tax_dt$tax_name <- tax_dt[,2]
-  
   
   library(ggplot2)
   library(ggthemes)
@@ -75,11 +68,9 @@ for(tax_lev in c("phylum","class","family","genus")){
   tax.summary$prev_frac <-  tax.summary$Prevalence/length(unique(sum_tax_dt$sample_name))  
   fil_tax <-  tax.summary$tax_name[tax.summary$prev_frac>= 0.2]
   fil_tax_dt <-  sum_tax_dt[sum_tax_dt$tax_name %in% as.character(fil_tax),]  
-  
-  
+
   
   result_lme <- list()
-  
   pdf(paste(results_folder,paste0("Rel_Abun_",tax_lev,"_early_recovery",'.pdf'),sep="/"),height = 4, width = 6, useDingbats = FALSE)
   taxon <-  unique(fil_tax_dt$tax_name)[5]
   
@@ -206,8 +197,8 @@ for(tax_lev in c("phylum","class","family","genus")){
 
 
 # Use MHI to do the similar analysis
-mhi_dt <-  read.csv("../data/data_Mel/2021-04-26 VE303_Ph1_MHI_values.csv")
-
+diversity_MHI <-  readRDS("../Data/diversity_MHI.rds")
+mhi_dt <- diversity_MHI[["MHI"]]
 # MHI index
 col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = "#1b9e77",
                    "Late recovery" = "#d95f02","Early no vanco" = "#e7298a","Late no vanco" = "#66a61e")
@@ -221,8 +212,6 @@ mhi_dt <-  mhi_dt[order(mhi_dt$Subject.Cohort, mhi_dt$Treatment),]
 
 mhi_dt$sample_name <- as.character(mhi_dt$sample_name)
 mhi_dt$sample_name <- factor(mhi_dt$sample_name, levels = unique(mhi_dt$sample_name))
-
-
 mhi_dt$cohort_id_long <-  factor(mhi_dt$cohort_id_long, levels = unique(mhi_dt$cohort_id_long))
 mhi_dt$cohort_id_long <- relevel(mhi_dt$cohort_id_long,ref = "Vanco")
 
@@ -239,7 +228,7 @@ p_MHI <- ggplot(mhi_dt) +
   xlab("")+
   ylab("MHI")
 
-print(p_MHI)
+#print(p_MHI)
 
 #print(p_FC_bai)
 pdf(paste(results_folder,paste0("MHI_timeplot",'.pdf'),sep="/"),height =6 , width = 40, useDingbats = FALSE)

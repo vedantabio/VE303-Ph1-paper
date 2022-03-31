@@ -69,9 +69,9 @@ dir.create(file.path(main_data_Dir, sub_data_Dir), showWarnings = TRUE,recursive
 data_folder <- paste(main_data_Dir,sub_data_Dir,sep="/")
 ###############Read input files########################
 library("phyloseq")
-phy_mic <- readRDS("../data/processed_data/phy_mic_abs.rds")
+phy_mic <- readRDS("../Data/phy_mic_abs.rds")
 #### SCFA dynamics ####
-phy_met <-  readRDS("../data/processed_data/phy_met.rds")
+phy_met <-  readRDS("../Data/phy_met.rds")
 phy_sel <- prune_samples(sample_names(phy_met), phy_mic)
 
 # Get the OTU table 

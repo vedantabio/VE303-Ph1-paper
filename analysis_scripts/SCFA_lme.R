@@ -34,13 +34,13 @@ results_folder <- paste(mainDir,subDir,sep="/")
 
 
 # Read SCFA 
-phy_scfa <-  readRDS("../data/processed_data/phy_met.rds")
+phy_scfa <-  readRDS("../Data/phy_met.rds")
 phy_scfa_m <- psmelt(phy_scfa)
 head(phy_scfa_m)
 phy_scfa_m <- phy_scfa_m[,c("Sample","OTU","cohort_id_long","Subject.ID","desc.ID","Collection.Day.Norm","Timepoint.Calc","Abundance")]
 
 # Plot VE303 Total Abundance on the x and scfa on the y from each cohort 
-phy_mic <-  readRDS("../data/processed_data/phy_mic_abs.rds")
+phy_mic <-  readRDS("../Data/phy_mic_abs.rds")
 phy_sel <- prune_samples(sample_names(phy_scfa), phy_mic)
 phy_sel <- prune_taxa(taxa_sums(phy_sel)>0, phy_sel)
 

@@ -24,7 +24,7 @@ phy.cols <- c("Actinobacteria" = "#ff3017", "Bacteroidetes" = "#ffd73a", "Firmic
 
 ########Create result directory#############
 mainDir <- "../results"
-subDir <- paste0("RF_Col_Viz/",gsub("-","_",Sys.Date()))
+subDir <-"RF_Col_Viz"
 dir.create(file.path(mainDir, subDir), showWarnings = TRUE,recursive = TRUE)
 results_folder <- paste(mainDir,subDir,sep="/")
 
@@ -34,17 +34,17 @@ col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = 
 
 # Import dataset
 # Add appropriated dated folder 
-input_data <-  readRDS("../results/Input_matrix/2021_12_20/input_data_rf.RDS")
-abun_data <- readRDS("../results/Input_matrix/2021_12_20/ve303_abun_rf.RDS")[["Species"]]
-abun_data_coh6 <- readRDS("../results/Input_matrix/2021_12_20/ve303_abun_coh6.RDS")[["Species"]]
+input_data <-  readRDS("../results/Input_matrix/input_data_rf.RDS")
+abun_data <- readRDS("../results/Input_matrix/ve303_abun_rf.RDS")[["Species"]]
+abun_data_coh6 <- readRDS("../results/Input_matrix/ve303_abun_coh6.RDS")[["Species"]]
 
 # Visualize Importance
-lev_tax <- "Species"
-for(lev_tax in c("Class","Order","Genus","Species")){
-  
+lev_tax <- "Class"
+for(lev_tax in c("Class","Genus","Species")){
+#  print(lev_tax)
   # First visualize the importance along with frequency:
   # Remove negative importance and 0 importance and p-val < 0.05
-  final_imp_dt <-  read.csv(paste0("../results/RF_colonization_model/2021_12_20/","VarImp_",lev_tax,".csv"))
+  final_imp_dt <-  read.csv(paste0("../results/RF_colonization_model/","VarImp_",lev_tax,".csv"))
   ntrials <-  as.numeric(table(final_imp_dt$Predictors)[1])
   final_imp_dt <- final_imp_dt[final_imp_dt$VarImp > 0,]
   final_imp_dt <- final_imp_dt[final_imp_dt$p.value < 0.1,]
@@ -94,11 +94,9 @@ for(lev_tax in c("Class","Order","Genus","Species")){
   
   imp_bugs <- as.character(rf_imp_sum$Predictors)
   # Import ALE
-  tot_slope_dt <- read.csv(paste0("../results/RF_colonization_model/2021_12_20/","ALE_Dir_",lev_tax,".csv"))
+  tot_slope_dt <- read.csv(paste0("../results/RF_colonization_model/","ALE_Dir_",lev_tax,".csv"))
   tot_slope_dt$Dir <- ifelse(tot_slope_dt$Slope > 0,1,-1)
   tot_slope_dt <-  tot_slope_dt[tot_slope_dt$pred %in% imp_bugs,]
-  
-  
   
   
   library(tidyverse)
@@ -112,24 +110,24 @@ for(lev_tax in c("Class","Order","Genus","Species")){
   sum_slope_dt  <- sum_slope_dt[sum_slope_dt$pred %in% imp_bugs,]
   sum_slope_dt$pred <-  factor(sum_slope_dt$pred, levels = rev(imp_bugs))
   
-  library(ggplot2)
-  gg_slope <- ggplot(sum_slope_dt, aes(x = 1, y = pred )) +
-    geom_tile(color = "white", size = 0.1, aes(fill = Dir))+
-    # scale_fill_gradient2( high = "#e34a33", mid = "#2c7fb8")+
-    #scale_fill_gradient( low = scales::muted("blue"), high = scales::muted("red"))+
-    scale_fill_manual(name = "",values = c("-1" = scales::muted('blue'), "1" = scales::muted('red')))+
-    theme_classic()+
-    theme_prism()+
-    theme(
-      axis.title.x =element_text(size = 25),
-      legend.position = "none",
-      axis.ticks.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks.y = element_blank(),
-      axis.text.x=element_blank(),
-      axis.title.y = element_blank(),
-      axis.text.y.left= element_blank())+
-    xlab("Relation")
+  # library(ggplot2)
+  # gg_slope <- ggplot(sum_slope_dt, aes(x = 1, y = pred )) +
+  #   geom_tile(color = "white", size = 0.1, aes(fill = Dir))+
+  #   # scale_fill_gradient2( high = "#e34a33", mid = "#2c7fb8")+
+  #   #scale_fill_gradient( low = scales::muted("blue"), high = scales::muted("red"))+
+  #   scale_fill_manual(name = "",values = c("-1" = scales::muted('blue'), "1" = scales::muted('red')))+
+  #   theme_classic()+
+  #   theme_prism()+
+  #   theme(
+  #     axis.title.x =element_text(size = 25),
+  #     legend.position = "none",
+  #     axis.ticks.x = element_blank(),
+  #     axis.text.y = element_blank(),
+  #     axis.ticks.y = element_blank(),
+  #     axis.text.x=element_blank(),
+  #     axis.title.y = element_blank(),
+  #     axis.text.y.left= element_blank())+
+  #   xlab("Relation")
   
   library(ggplot2)
   gg_slope <- ggplot(sum_slope_dt, aes(x = factor(1), y = pred )) +
@@ -139,7 +137,7 @@ for(lev_tax in c("Class","Order","Genus","Species")){
     scale_fill_manual(name = "",values = c("-1" = scales::muted('blue'), "1" = scales::muted('red')))+
     theme_classic()+
     theme_prism()+
-    # scale_x_discrete(expand = c(0,0))+ 
+    # scale_x_discrete(expand = c(0,0))+
     #  scale_y_discrete(expand = c(0,0)) +
     coord_fixed(ratio=1)+
     theme(axis.title.x =element_text(size = 20),
@@ -151,18 +149,15 @@ for(lev_tax in c("Class","Order","Genus","Species")){
           axis.title.y = element_blank(),
           axis.text.y.left= element_blank())+
     xlab("Relation")
-  
-  gg_slope
-  
+
+  #gg_slope
   
   library(cowplot)
   pdf(paste(results_folder,paste0('VIMP_Freq_',lev_tax,'.pdf'),sep="/"),height = 8, width = 20,useDingbats = F)
-  print(plot_grid(freq_p,gg_slope, vimp_p, labels = c('', '',''),nrow = 1,rel_widths = c(0.5,0.1,1),
-                  
-                  label_size = 10))
+  print(plot_grid(freq_p,gg_slope, vimp_p, labels = c('', '',''),nrow = 1,rel_widths = c(0.5,0.1,1),label_size = 10))
   dev.off()
   
-  
+} 
   # XY Plots  for baseline
   # Subset from input data
   sp_abun_dt <-  input_data[["Species"]]
@@ -204,7 +199,7 @@ for(lev_tax in c("Class","Order","Genus","Species")){
   
   
   # Make a heatmap of species with logFC corresponding to  VE303-total abundance:
-  input_mat <-  input_data[[lev_tax]]
+  input_mat <-  input_data[["Species"]]
   tot_X_dt <- input_mat
   tot_X_dt$Subject.ID <-  NULL
   abun_data <- abun_data[abun_data$Subject.ID %in% input_mat$Subject.ID,]
@@ -304,7 +299,7 @@ for(lev_tax in c("Class","Order","Genus","Species")){
   err_list <- list()
   for(lev_tax in c("Class","Order","Genus","Species","null_data")[1:5]){
     
-    pred_dt <-  read.csv(paste0("../results/RF_colonization_model/2021_12_20/","Prediction_error_",lev_tax,".csv"))
+    pred_dt <-  read.csv(paste0("../results/RF_colonization_model/","Prediction_error_",lev_tax,".csv"))
     pred_list[[lev_tax]] <- pred_dt
     
     i = 1

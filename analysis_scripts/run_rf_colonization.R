@@ -17,7 +17,7 @@ library(tidyverse)
 
 ########Create result directory#############
 mainDir <- "../results"
-subDir <- paste0("RF_colonization_model/",gsub("-","_",Sys.Date()))
+subDir <- "RF_colonization_model"
 dir.create(file.path(mainDir, subDir), showWarnings = TRUE,recursive = TRUE)
 results_folder <- paste(mainDir,subDir,sep="/")
 
@@ -27,8 +27,8 @@ rownames(df)[which.max(df$mtime)]
 
 # Import dataset
 # Add the dated folder for the input data
-input_data <-  readRDS("../results/Input_matrix/2021_12_20/input_data_rf.RDS")
-abun_data <- readRDS("../results/Input_matrix/2021_12_20//ve303_abun_rf.RDS")[["Species"]]
+input_data <-  readRDS("../results/Input_matrix/input_data_rf.RDS")
+abun_data <- readRDS("../results/Input_matrix/ve303_abun_rf.RDS")[["Species"]]
 
 names(input_data)
 

@@ -6,16 +6,10 @@ library(stringr)
 library(gtools)
 
 # Read all the RBH files:
-f_names <-  list.files("../RBH_data",full.names = T)
-b_names <- basename(f_names)
-b_names <- gsub("_rbh.*","",b_names)
-b_names <- gsub("_poli.*","",b_names)
-
-rbh_list <-  lapply(f_names,read.csv,sep = "\t")
-rbh_dt <-  do.call("rbind",Map(cbind, rbh_list,Genome = b_names))
+rbh_dt <- read.csv("../Data/RBH_results_VE303_Control.csv")
 
 # Now read fasta file to extract the full names:
-fasta_db <- readAAStringSet("../SBA_db/SBA_Genes_dataset_v3_cdhit.fasta") 
+fasta_db <- readAAStringSet("../Data/SBA_Genes_dataset_v3_cdhit.fasta")
 full_id <-  names(fasta_db)
 fasta_id <-  gsub(" .*","",full_id)
 id_dt <-  data.frame(fasta_id, full_id)

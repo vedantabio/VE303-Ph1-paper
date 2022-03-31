@@ -31,36 +31,25 @@ subDir <- paste0("VE303_recov/Heatmap_sig")
 dir.create(file.path(mainDir, subDir), showWarnings = TRUE,recursive = TRUE)
 results_folder <- paste(mainDir,subDir,sep="/")
 
-
-ve303_abun <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 ve303_total_absolute_abundance.csv")
-ve303_abun <-  unique(ve303_abun[,c("sample_name","absolute_abund","cohort_id_long","Day.from.Start")])
-names(ve303_abun)[2] <- "VE303_tot_abs_abund" 
+# ve303_abun <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 ve303_total_absolute_abundance.csv")
+# ve303_abun <-  unique(ve303_abun[,c("sample_name","absolute_abund","cohort_id_long","Day.from.Start")])
+# names(ve303_abun)[2] <- "VE303_tot_abs_abund" 
 
 col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = "#1b9e77",
                    "Late recovery" = "#d95f02","Early no vanco" = "#e7298a","Late no vanco" = "#66a61e")
 
 # Read different tax level data
-tax_list <- list()
+tax_list <- readRDS("../Data/oc_tax_level_abun.rds")
+names(tax_list) <-  c("phylum","class","family","genus")
+
 tax_lev <- c("phylum","class","family","genus")[3]
 sig_coh_list <- list()
 for(tax_lev in c("phylum","class","family","genus")){
   
-  if(tax_lev == "phylum"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_phlyum_RA.csv")
-    result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/phylum_lme_results_baseline_vanco.csv")
-  }else if(tax_lev == "class"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_class_RA.csv")
-    result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/class_lme_results_baseline_vanco.csv")
-  }else if(tax_lev == "family"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_family_RA.csv")
-    result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/family_lme_results_baseline_vanco.csv")
-  }else if(tax_lev == "genus"){
-    tax_dt <-  read.csv("../data/data_Mel/Taxon_data_5_12/2021-05-12 VE303_Ph1_genus_RA.csv")
-    result_lme_dt <-  read.csv("../results/VE303_recov/all_Cohorts/genus_lme_results_baseline_vanco.csv")
-  }else{
-    
-  }
   
+  tax_dt <- tax_list[[tax_lev]]
+  # Read lme results
+  result_lme_dt <-  read.csv(paste0("../results/VE303_recov/all_Cohorts/",tax_lev,"_lme_results_baseline_vanco.csv"))
   
   tax_dt$Treatment <- tax_dt$Day.from.Start  
   tax_dt$cohort_id_long <-  factor(tax_dt$cohort_id_long, levels = unique(tax_dt$cohort_id_long))

@@ -23,7 +23,7 @@ results_folder <- paste(mainDir,subDir,sep="/")
 
 
 # Read SCFA 
-scfa_dt <-  read.csv("../data/Metabolomics/Pharmaron_VE303-01_Metabolon_30NOV2018.csv")
+scfa_dt <-  read.csv("../Data/Pharmaron_VE303-01_Metabolon_30NOV2018.csv")
 scfa_dt$Pharmaron.Sample.Barcode <- as.character(scfa_dt$Pharmaron.Sample.Barcode)
 names(scfa_dt)
 

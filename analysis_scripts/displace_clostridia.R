@@ -18,7 +18,7 @@ library(tidyverse)
 
 ########Create result directory#############
 mainDir <- "../results"
-subDir <- paste0("Displaced_clostridia/",gsub("-","_",Sys.Date()))
+subDir <- "Displaced_clostridia"
 dir.create(file.path(mainDir, subDir), showWarnings = TRUE,recursive = TRUE)
 results_folder <- paste(mainDir,subDir,sep="/")
 
@@ -26,7 +26,7 @@ results_folder <- paste(mainDir,subDir,sep="/")
 col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = "#1b9e77",
                    "Late recovery" = "#d95f02","Early no vanco" = "#e7298a","Late no vanco" = "#66a61e")
 # Import metadata 
-meta <-  read.csv("../data/Microbiome/2019_07_24_Ph1_metadata_all.csv")
+meta <-  read.csv("../Data/2019_07_24_Ph1_metadata_all.csv")
 #Filter out the Cohort 8 samples and week 24 - These are excluded from the publication
 # Filter out the samples collected during Vanco treatment - these were excluded from publication
 meta <- meta %>% 
@@ -65,21 +65,9 @@ rownames(meta) <-  meta$sample_name
 
 
 # Read different tax level data
-abun_dt <-  read.csv("../data/Microbiome/2019-07-24 all_one_codex_abundance.csv")
-one_codex_data <- abun_dt[abun_dt$sample_name %in% meta$sample_name,]
-sum(unique(one_codex_data$sample_name) %in% meta$sample_name)
-# Remove rows with NA is Abundance
-one_codex_data <- one_codex_data[ !is.na(one_codex_data$abundance),]
-# Only keep rows with non zero abundance
-one_codex_data <-  one_codex_data[one_codex_data$abundance != 0,]
+all_abun <-  readRDS("../Data/oc_tax_level_abun.rds")
 
-# Select only species
-one_codex_data <- one_codex_data[ one_codex_data$tax_rank %in% c("species"),]
-head(one_codex_data)
-one_codex_data <- unique(one_codex_data)
-
-tail(one_codex_data$abundance)
-
+one_codex_data <- all_abun[["Species"]]
 # RElative abundance
 rel_dt <-  one_codex_data[,c("sample_name","Species.corrected","abundance")]
 rel_dt <-  rel_dt[rel_dt$abundance != 0,]
@@ -195,8 +183,6 @@ p1 <-  ggplot(prevdf,aes(x = Prevalence, y = Prop)) +  geom_jitter(size = 2)+
 print(p1)
 
 phy_pre <- prune_taxa(as.character(prevdf_fil$OTU), phy_pre)
-
-
 
 # Step 1: Subset samples around final week of dosing
 # Subset samples less than 40 days
@@ -365,7 +351,7 @@ dev.off()
 
 # Now post VE303 abundance:
 # Import marker panel data for total ve303 abundance
-m_panel_dt = read.csv("../data/Microbiome/Updated_Marker_panel/VE303_Ph2_Extended_Marker_Data_20210607.csv")
+m_panel_dt = read.csv("../Data/VE303_Ph2_Extended_Marker_Data_20210607.csv")
 
 # Three replicates of this sample. Remove one
 m_panel_dt <- m_panel_dt[-grep("S04310504100010-166-S28_S28_L001_001.fastq.gz",m_panel_dt$filename),]

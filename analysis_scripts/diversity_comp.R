@@ -26,12 +26,14 @@ library(phyloseq)
 library(gtools)
 
 mainDir <- "../results"
-subDir <- paste0("diversity/",gsub("-","_",Sys.Date()))
+subDir <- "diversity"
 dir.create(file.path(mainDir, subDir), showWarnings = TRUE,recursive = TRUE)
 results_folder <- paste(mainDir,subDir,sep="/")
 
-# Read Alpha diversity data
-alpha_dt <-  read.csv("../data/data_Mel/2021-04-26 VE303_Ph1_alpha_diversity.csv")
+
+# Read diversity data from rds file
+diversity_MHI <- readRDS("../Data/diversity_MHI.rds")
+alpha_dt <-  diversity_MHI[["alpha"]]
 col_day_start <- c("Baseline"= "#7570b3","Vanco" = "#a6761d","Early recovery" = "#1b9e77",
                    "Late recovery" = "#d95f02","Early no vanco" = "#e7298a","Late no vanco" = "#66a61e")
 # Remove Inf div samples
@@ -155,9 +157,10 @@ write.xlsx(result_var_lme, file = paste(results_folder,paste0("Diversity_lme_res
 # Now, Beta diversity:
 library(CoDaSeq)
 # Metadata
-meta <-  read.csv("../data/data_Mel/2021-05-14 VE303_species_table_for_beta_diversity_metadata.csv")
+meta <-  read.csv("../Data/2019_07_24_Ph1_metadata_all.csv")
 rownames(meta) <-  meta$sample_name
-mat <-  read.csv("../data/data_Mel/2021-05-14 VE303_species_table_for_beta_diversity.csv")
+mat <-  diversity_MHI[["counts"]]
+meta <- meta[meta$sample_name %in% mat$sample_name,]
 rownames(mat) <-  mat$sample_name
 mat$sample_name <-  NULL
 
