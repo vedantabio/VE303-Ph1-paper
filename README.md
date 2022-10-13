@@ -2,7 +2,7 @@
 
 ## Reference
 
-Dsouza M, Menon R, et al. "Colonization of the Live Biotherapeutic Product VE303 in Healthy Volunteers and Associations with the Resident Microbiota and Metabolites" (submitted)
+Dsouza M, Menon R, et al. "Colonization of the Live Biotherapeutic Product VE303 in Healthy Volunteers and Associations with the Resident Microbiota and Metabolites" (published in Cell, Host & Microbe https://doi.org/10.1016/j.chom.2022.03.016)
 
 Dsouza et al. describe VE303, a live biotherapeutic product developed for the treatment of CDI. A phase 1 study in healthy volunteers found that VE303 was safe and well tolerated. Dosing VE303 daily for up to 14 days after vancomycin led to rapid and durable VE303 strain engraftment. 
 
